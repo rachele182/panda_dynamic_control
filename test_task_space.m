@@ -125,7 +125,7 @@ if (clientID>-1)
         x = T1(1:3,4); %current ee_position
         
         % Current joint derivative (Euler 1st order derivative)
-        qm_dot_calculated = (qm-qmOld)/cdt
+        qm_dot_calculated = (qm-qmOld)/cdt;
         qm_dot = qdot_m;
 
         %Get jacobians
@@ -163,7 +163,7 @@ if (clientID>-1)
         % -----------------------
         sres.qm(:,i) = qm;  sres.qm_dot(:,i) = qm_dot;  
         sres.qd(:,i) = q';  sres.qd_dot(:,i) = dq';  sres.qd_ddot(:,i) = ddq'; 
-        sres.T(:,:,i) = T1;
+        sres.T(:,:,i) = T1; sres.xdq(:,i) = vec4(xdq.translation); sres.cdq(:,i) = vec4(cdq.translation);
         
         % -----------------------        
         %% Impedance control
@@ -191,8 +191,8 @@ if (clientID>-1)
         ax = haminus8(DQ(ddxr)')*vec8(cdq - xdq) + 2*haminus8(DQ(C8*Jp*dq'))*Jp*(dq' - qm_dot)+ haminus8(DQ(C8*vec8(cdq)))*(ddxr - Jp_dot*qm_dot) + y; 
         J_inv = pinv(haminus8(DQ(C8*vec8(cdq)))*Jp);
         %control input joint space
-%       aq = J_inv*ax; 
-        aq = Jg2'*ax;
+        aq = J_inv*ax; 
+%         aq = Jg2'*ax;
         %fb linearization
         tau = M*aq + c + g ;
         
@@ -342,4 +342,21 @@ plot(tt,sres.tau_send(7,:),'y--','LineWidth',3);
 hold on, grid on
 plot(tt,sres.tau_read(:,7),'y','LineWidth',2);
 legend('tsend','tread'); 
+
+%%position plot
+figure();
+plot(tt,sres.cdq(2,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(2,:),'c','LineWidth',2);
+legend('xd','x')
+figure();
+plot(tt,sres.cdq(3,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(3,:),'c','LineWidth',2);
+legend('yd','y')
+figure()
+plot(tt,sres.cdq(4,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(4,:),'c','LineWidth',2);
+legend('zd','z')
         
