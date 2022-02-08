@@ -80,15 +80,15 @@ if (clientID>-1)
     sim.simxStartSimulation(clientID, sim.simx_opmode_blocking);
     %---------------------------------------
     
-    % Getting joint-position (you cannot assume the desired q is the
-    % real one and because it is not the real one, the dynamic configuration is
-    % different).
+    % Getting joint-positions
     %---------------------------------------
     for j=1:7
         [~,tauOrig(j)] = sim.simxGetJointForce(clientID,joint_handles(j),sim.simx_opmode_blocking);
         [~,qmread(j)]  = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_blocking);
+        [res,qdot(j)] = sim.simxGetObjectFloatParameter(clientID,joint_handles(j),2012,sim.simx_opmode_blocking);
     end      
     qm = double([qmread])';
+    qdot_m = double([qdot])';
 
     % Saving data to analyze later
     sres.qm = [];  sres.qm_dot = []; 
@@ -110,24 +110,27 @@ if (clientID>-1)
         for j=1:7
             [~,tauOrig(j)] = sim.simxGetJointForce(clientID,joint_handles(j),sim.simx_opmode_blocking);
             [~,qmread(j)]  = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_blocking);
+            [res,qdot(j)] = sim.simxGetObjectFloatParameter(clientID,joint_handles(j),2012,sim.simx_opmode_blocking);
         end      
         qmOld = qm;
         % Current joint configuration 
         disp('Measured joint position')
-        qm = double([qmread])'
+        qm = double([qmread])' %current joint postions
+        qdot_m = double([qdot])' %curent joint velocities
         
         % Current EE configuration
         disp('Current EE configuration')
-        xdq = fep.fkm(qm);
+        xdq = fep.fkm(qm); %current ee-pose
         T1 = DQuaternionToMatrix(xdq.q')
         x = T1(1:3,4); %current ee_position
         
         % Current joint derivative (Euler 1st order derivative)
-        qm_dot = (qm-qmOld)/cdt; 
-        
+        qm_dot_calculated = (qm-qmOld)/cdt
+        qm_dot = qdot_m;
+
         %Get jacobians
-        Ja = get_Ja_p(qm); %analytical translation jacobian
-        Ja_dot = get_Ja_dot_p(qm,qm_dot); %derivative of jacobian
+        Jp = fep.pose_jacobian(qm);
+        Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         
         %---------------------------------------    
 
@@ -143,7 +146,8 @@ if (clientID>-1)
         % Printing the time step of the simulation and the error
         % from the desired to actual joint configurations
         % -----------------------
-        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])        
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(vec8(cdq-xdq)))])
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(translation(normalize(cdq-xdq)))))])       
         % Vector with both joints: desired vs real (simulated)
         disp('Vector with both joints: desired and real (simulated)')
         [q; double([qmread])]
@@ -164,19 +168,33 @@ if (clientID>-1)
         % -----------------------        
         %% Impedance control
         % Using the dynamic model
+        O = zeros(1,6);
+        I = eye(3);
+        A = [O; I zeros(3,1) zeros(3,1) zeros(3,1); ...
+             O;zeros(3,1) zeros(3,1)  zeros(3,1) I;];
         g = get_GravityVector(qm);
         c = get_CoriolisVector(qm,qm_dot);
         M = get_MassMatrix(qm);
-        M_inv = inv(M); 
-        %set desired impedance values
-        Bm = eye(3)*M; %desired inertia matrix
-        Km = eye(3)*1000;
-        Dm = eye(3)*50;
-        L = inv(Ja * M_inv * Ja');
-        e_dot = Ja*(dq'-qm_dot);
-        e = xd - x;
-        F_tau = - L*inv(Bm)*(Dm*e_dot + Km*e)  - L*Ja_dot*qm_dot;
-        tau = (Ja')*F_tau + M*ddq' + c*qm_dot + g;
+        tauf = get_FrictionTorque(qm_dot);
+        %set gains
+        Km = eye(8)*20; 
+        Dm = eye(8)*5; 
+        % define error 
+        e = haminus8(DQ(C8*vec8(cdq)))*vec8(cdq - xdq);
+        e_dot = haminus8(DQ(C8*Jp*dq'))*vec8(cdq - xdq) + haminus8(DQ(C8*vec8(cdq)))*Jp*(dq' - qm_dot);
+        % define cl dynamics
+        y =  Dm*e_dot + Km*e;
+        ddxr = Jp_dot*dq' + Jp*ddq';
+        J = geomJ(fep,qm);
+        Jg2 = A*J;
+        % control input task space
+        ax = haminus8(DQ(ddxr)')*vec8(cdq - xdq) + 2*haminus8(DQ(C8*Jp*dq'))*Jp*(dq' - qm_dot)+ haminus8(DQ(C8*vec8(cdq)))*(ddxr - Jp_dot*qm_dot) + y; 
+        J_inv = pinv(haminus8(DQ(C8*vec8(cdq)))*Jp);
+        %control input joint space
+%       aq = J_inv*ax; 
+        aq = Jg2'*ax;
+        %fb linearization
+        tau = M*aq + c + g ;
         
         %store for later
         tau_send = tau;

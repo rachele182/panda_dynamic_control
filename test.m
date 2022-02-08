@@ -7,27 +7,27 @@ close all;
 include_namespace_dq;
 
 %% Compute desired joint space trajectory
-%q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
+q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
 
 %% Generate desired joint_space trajectory
 cdt = 0.010; %sampling time
 tt = 0:cdt:2; %simulation time
 
 %% neighbourhood waypoints (converges fast with joint space controller and kp = 1000, kd = 50);
-% q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
-% q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
-% q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
-% q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
-% q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
+q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 
-% tWaypoints = [0,0.5,1,1.5,2];
-% qWaypoints = [q1,q2,q3,q4,q5]';
+tWaypoints = [0,0.5,1,1.5,2];
+qWaypoints = [q1,q2,q3,q4,q5]';
 
 %% Circular trajectory
-load test_free_motion_jerk_traj.mat
-q1 = out.q.Data;
-tWaypoints = [0,0.5,1,1.5,2];
-qWaypoints = [q1(1,:);q1(51,:);q1(101,:);q1(151,:);q1(201,:)];
+%load test_free_motion_jerk_traj.mat
+% q1 = out.q.Data;
+% tWaypoints = [0,0.5,1,1.5,2];
+% qWaypoints = [q1(1,:);q1(51,:);q1(101,:);q1(151,:);q1(201,:)];
 
 
 %% Generate trajectory joint space
@@ -143,6 +143,7 @@ if (clientID>-1)
         % Pose Jacobian
         Jp = fep.pose_jacobian(qm);
         
+        
         % Geometric Jacobian
         J = geomJ(fep,qm);
         
@@ -151,6 +152,7 @@ if (clientID>-1)
         
         % Current joint derivative (Euler 1st order derivative)
         qm_dot = (qm-qmOld)/cdt; 
+        Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
 
         % Desired joint positions
@@ -165,7 +167,9 @@ if (clientID>-1)
         % Printing the time step of the simulation and the error
         % from the desired to actual joint configurations
         % -----------------------
-        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])        
+%         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])  
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(vec8(cdq-xdq)))])
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(translation(normalize(cdq-xdq)))))])
         % Vector with both joints: desired vs real (simulated)
         disp('Vector with both joints: desired and real (simulated)')
         [q; double([qmread])]
@@ -202,7 +206,7 @@ if (clientID>-1)
         % Derivative gain (I tested quickly and the limit was 1 with 10ms)
         % More than this causes vrep to behave weirdly (not an issue with
         % the control but with the bullet dynamics engine).
-         kd = (0.5/cdt);
+        kd = (1/cdt);
 %         kd = (0.8/cdt);
 
         % Proportinal gain (The limited I got was 20 with initial error
@@ -215,22 +219,30 @@ if (clientID>-1)
         kp = (10/cdt);   % Converges faster but larger overshoot
 
         % Stiffness matrix
-        K = diag([1000, 1000, 1000]);
+        K = eye(8)*1000;
         
         % Damping matrix
 %         D = diag([100, 100, 100]);
-%          D = diag([50, 50, 50]);
-%           D = 50*eye(7)*0.01;
+         D = eye(8)*5;
+%          D = eye(7)*5;
+%       
         
-%         Simple PD Control Law in the task space
-%          tau = J_t'*(K * (xd - x) - D*(J_t * qm_dot)) + g;
-%          tau = J_t'*(K * (xd - x)) - D*(q'-qm_dot) + g;
-       
+%        Simple PD Control Law in the joint space
+%          tau = M*(ddq' + kd*(dq'-qm_dot) + kp*(q'-qm)) +c + g;
+%        PD control in task space + g compensation 
+         ki = 500; 
+         e = vec8(cdq - xdq);
+         de = Jp*(dq'-qm_dot);
+         ei = de*cdt + e;
+         y = pinv(Jp)*(Jp_dot*(dq'-qm_dot) + Jp*dq' + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
+         tau = M*y + c + g; 
+%          tau = pinv(Jp)*(K * vec8((cdq - xdq)) - D*Jp*(qm_dot)) + c + g + M*ddq';
+          
 
         % Control law is very simple (basically the desired acceleration is
         % cancelled while the velocity and position errors are controlled
         % (that is why we are getting the error of those values).
-         tau = M*(ddq' + kd*(dq'-qm_dot) + kp*(q'-qm)) +c + g;
+%         tau = M*(ddq' + kd*(dq'-qm_dot) + kp*(q'-qm)) +c + g;
          tau_send = tau;
          sres.tau_send(:,i) = tau_send;
          
