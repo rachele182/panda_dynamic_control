@@ -9,6 +9,7 @@ include_namespace_dq;
 
 % Precomputed Trajectory in the Joint Space
 load fepwaypoints-1.mat
+% tWaypoints = [0,0.5,1,1.5,2];
 % Sampling time 
 cdt = 0.0010;
 tt = 0:cdt:0.5;

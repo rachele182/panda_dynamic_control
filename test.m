@@ -1,31 +1,38 @@
-%% Test torque control vrep 
+%% Test torque control vrep (joint space controller)
 clear;
 clc;
 close all;
-q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]';
-q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
-q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
-q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
-q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
-q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
-
 
 %%Addpath 
 include_namespace_dq;
 
-% Precomputed Trajectory in the Joint Space
-tWaypoints = [0,2.5,3.33,4.166,5];
-qWaypoints = [q1,q2,q3,q4,q5]';
+%% Compute desired joint space trajectory
+%q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
 
-load circ_y_z.mat
-% Sampling time 
-cdt = 0.0010;
-tt = 0:cdt:0.5;
+%% Generate desired joint_space trajectory
+cdt = 0.010; %sampling time
+tt = 0:cdt:2; %simulation time
 
-% q1 = out.q.Data(:,:)';
-% qWaypoints = [q1(1,:);q1(300,:);q1(600,:);q1(900,:);q1(1200,:)];
+%% neighbourhood waypoints (converges fast with joint space controller and kp = 1000, kd = 50);
+% q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
+% q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+% q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+% q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+% q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+
+% tWaypoints = [0,0.5,1,1.5,2];
+% qWaypoints = [q1,q2,q3,q4,q5]';
+
+%% Circular trajectory
+load test_free_motion_jerk_traj.mat
+q1 = out.q.Data;
+tWaypoints = [0,0.5,1,1.5,2];
+qWaypoints = [q1(1,:);q1(51,:);q1(101,:);q1(151,:);q1(201,:)];
+
+
+%% Generate trajectory joint space
+
 [qDesired, qdotDesired, qddotDesired, tt] = refTrajectoryGeneration(tWaypoints, qWaypoints, tt);
-
 
 %% Connect to vrep
 
@@ -87,8 +94,7 @@ if (clientID>-1)
     %  start our simulation in lockstep 
     sim.simxStartSimulation(clientID, sim.simx_opmode_blocking);
     %---------------------------------------
-
-
+    
     % Getting joint-position (you cannot assume the desired q is the
     % real one and because it is not the real one, the dynamic configuration is
     % different).
@@ -115,7 +121,6 @@ if (clientID>-1)
             break
         end
         
- 
         % Getting joint-position (you need to do this in every step to get
         % the right dynamics (otherwise you will be getting the desired dynamics
         % which very likely is not the true one).  
@@ -133,7 +138,7 @@ if (clientID>-1)
         disp('Current EE configuration')
         xdq = fep.fkm(qm);
         T1 = DQuaternionToMatrix(xdq.q')
-        x = T1(1:3,4);
+        x = T1(1:3,4); %current ee_position
         
         % Pose Jacobian
         Jp = fep.pose_jacobian(qm);
@@ -199,7 +204,6 @@ if (clientID>-1)
         % the control but with the bullet dynamics engine).
          kd = (0.5/cdt);
 %         kd = (0.8/cdt);
-         
 
         % Proportinal gain (The limited I got was 20 with initial error
         % close to zero, but 10 if the error is not really close). If the
@@ -207,21 +211,21 @@ if (clientID>-1)
         % This again is not a real issue (well, it can be if the torque is
         % too large) but rather a issue with the dynamics engine.
 %         kp = (2/cdt);  % Takes longer to converge but smaller overshoot
-%          kp = (5/cdt);   % Converges faster but larger overshoot
+%         kp = (5/cdt);   % Converges faster but larger overshoot
         kp = (10/cdt);   % Converges faster but larger overshoot
-       
-
-%         Including a simple motion control in the Cartesian space.
-%       tau = J^T (K (x_d - x) - D (dx)) + g(q)→ robot 
 
         % Stiffness matrix
         K = diag([1000, 1000, 1000]);
         
         % Damping matrix
-        D = diag([100, 100, 100]);
+%         D = diag([100, 100, 100]);
+%          D = diag([50, 50, 50]);
+%           D = 50*eye(7)*0.01;
         
-        % Simple PD Control Law in the task space
-        %tau = J_t'*(K * (xd - x) - D*(J_t * qm_dot)) + g;
+%         Simple PD Control Law in the task space
+%          tau = J_t'*(K * (xd - x) - D*(J_t * qm_dot)) + g;
+%          tau = J_t'*(K * (xd - x)) - D*(q'-qm_dot) + g;
+       
 
         % Control law is very simple (basically the desired acceleration is
         % cancelled while the velocity and position errors are controlled
@@ -285,26 +289,32 @@ figure();
 plot(tt,sres.qd_dot(1,:),'m--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm_dot(1,:),'m','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
 plot(tt,sres.qd_dot(2,:),'b--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm_dot(2,:),'b','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(3,:),'g--','LineWidth',3); 
+plot(tt,sres.qd_dot(3,:),'g--','LineWidth',3);
 hold on, grid on
 plot(tt,sres.qm_dot(3,:),'g','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
 plot(tt,sres.qd_dot(4,:),'k--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm_dot(4,:),'k','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
 plot(tt,sres.qd_dot(5,:),'r--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm_dot(5,:),'r','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(6,:),'c--','LineWidth',3); 
+plot(tt,sres.qd_dot(6,:),'c--','LineWidth',3);
 hold on, grid on
 plot(tt,sres.qm_dot(6,:),'c','LineWidth',2);
+legend('qdotDesired','qdotMeasured'); 
 hold on, grid on
 plot(tt,sres.qd_dot(7,:),'y--','LineWidth',3); 
 hold on, grid on
@@ -312,34 +322,40 @@ plot(tt,sres.qm_dot(7,:),'y','LineWidth',2);
 legend('qdotDesired','qdotMeasured'); 
 
 figure(); 
-plot(tt,sres.qd_dot(1,:),'m--','LineWidth',3); 
+plot(tt,sres.qd(1,:),'m--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(1,:),'m','LineWidth',2);
+legend('qDesired','qMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(2,:),'b--','LineWidth',3); 
+plot(tt,sres.qd(2,:),'b--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(2,:),'b','LineWidth',2);
+legend('qDesired','qMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(3,:),'g--','LineWidth',3); 
+plot(tt,sres.qd(3,:),'g--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(3,:),'g','LineWidth',2);
 hold on, grid on
-plot(tt,sres.qd_dot(4,:),'k--','LineWidth',3); 
+legend('qDesired','qMeasured'); 
+plot(tt,sres.qd(4,:),'k--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(4,:),'k','LineWidth',2);
+legend('qDesired','qMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(5,:),'r--','LineWidth',3); 
+plot(tt,sres.qd(5,:),'r--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(5,:),'r','LineWidth',2);
+legend('qDesired','qMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(6,:),'c--','LineWidth',3); 
+plot(tt,sres.qd(6,:),'c--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(6,:),'c','LineWidth',2);
+legend('qDesired','qMeasured'); 
 hold on, grid on
-plot(tt,sres.qd_dot(7,:),'y--','LineWidth',3); 
+plot(tt,sres.qd(7,:),'y--','LineWidth',3); 
 hold on, grid on
 plot(tt,sres.qm(7,:),'y','LineWidth',2);
-legend('qdotDesired','qdotMeasured'); 
+legend('qDesired','qMeasured'); 
 
 figure(); 
 plot(tt,sres.tau_read(:,1),'m--','LineWidth',3); 
