@@ -7,21 +7,21 @@ close all;
 include_namespace_dq;
 
 %% Compute desired joint space trajectory
-q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
-
+q_in = [1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
+%q_in = [0 0 0 -1.5708 0 1.5708 0]';
+ 
 %% Generate desired joint_space trajectory
 cdt = 0.010; %sampling time
-tt = 0:cdt:5; %simulation time
-% tt = 0:cdt:2;
+tt = 0:cdt:2; %simulation time
+
 %% neighbourhood waypoints (converges fast with joint space controller and kp = 1000, kd=50);
-q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
+q1 = q_in  +[0;0;0;deg2rad(-5);0;0;0];
 q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
 q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
 q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 
-% tWaypoints = [0,0.5,1,1.5,2];
-tWaypoints = [0,1.2,2.4,3.6,5];
+tWaypoints = [0,0.5,1,1.5,2];
 qWaypoints = [q1,q2,q3,q4,q5]';
 
 %% Circular trajectory
@@ -34,6 +34,7 @@ qWaypoints = [q1,q2,q3,q4,q5]';
 %% Generate trajectory joint space
 
 [qDesired, qdotDesired, qddotDesired, tt] = refTrajectoryGeneration(tWaypoints, qWaypoints, tt);
+
 
 %% Connect to vrep
 
@@ -51,13 +52,16 @@ vi = DQ_VrepInterface;
 fep_vreprobot = FEpVrepRobot('Franka',vi);
 
 %% Load DQ Robotics kinematics
-fep  = fep_vreprobot.kinematics();
+fep  = fep_vreprobot.kinematics(); %% ATTENTION: DH CONVENTION
 
 if (clientID>-1)
     disp('Connected to remote API server');
     
     handles = get_joint_handles(sim,clientID);
     joint_handles = handles.armJoints;
+    utils = GetHandles(clientID, sim);   
+    pose_joints = GetPoseJoints(clientID, sim, utils.worldFrame2, joint_handles);
+    fep.set_reference_frame(pose_joints(1));
     pause(0.3);
     
     % get initial state of the robot
@@ -71,12 +75,12 @@ if (clientID>-1)
         qdotstr = [qdotstr,num2str(qdot(j)),' '];
     end
     
-%     qstr = [qstr,']'];
-%     qdotstr = [qdotstr,']'];
-%     disp('Initial Joint positions: ');
-%     disp(qstr);
-%     disp('Initial Joint Velocities: ');
-%     disp(qdotstr);
+    qstr = [qstr,']'];
+    qdotstr = [qdotstr,']'];
+    disp('Initial Joint positions: ');
+    disp(qstr);
+    disp('Initial Joint Velocities: ');
+    disp(qdotstr);
     
     
     %% Setting to synchronous mode
@@ -121,18 +125,16 @@ if (clientID>-1)
         end      
         qmOld = qm;
         % Current joint configuration 
-        disp('Measured joint position')
-        qm = double([qmread])'
+        disp('Measured joint position');
+        qm = double([qmread])';
         
         % Current EE configuration
-        disp('Current EE configuration')
-        xdq = fep.fkm(qm);
-        T1 = DQuaternionToMatrix(xdq.q');
-        x = T1(1:3,4); %current ee_position
+        disp('Current EE configuration');
+        xdq = fep.fkm(qm); %DQ pose
         
         % Pose Jacobian
         Jp = fep.pose_jacobian(qm);
-     
+        
         % Geometric Jacobian
         J = geomJ(fep,qm);
         
@@ -140,7 +142,8 @@ if (clientID>-1)
         J_t = J(4:6,:);
         
         % Current joint derivative (Euler 1st order derivative)
-        qm_dot = (qm-qmOld)/cdt; 
+        qm_dot = (qm-qmOld)/cdt; %computed as vrep function 
+        
         % Pose Jacobian first-time derivative 
         Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
@@ -149,19 +152,16 @@ if (clientID>-1)
         q = qDesired(i,:);
         
         % Desired Cartesian pose
-        cdq = fep.fkm(q);
-%         xd = cdq.q;
-        T2 = DQuaternionToMatrix(cdq.q');
-        xd = T2(1:3,4);
-        
+        cdq = fep.fkm(q); 
+       
         % Printing the time step of the simulation and the error
         % -----------------------
-%         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])  
+        %disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])  
         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(vec8(cdq-xdq)))])
-        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(translation(normalize(cdq-xdq)))))])
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(cdq.translation-xdq.translation)))])
         
         % Vector with both joints: desired vs real (simulated)
-%       disp('Vector with both joints: desired and real (simulated)')
+        %disp('Vector with both joints: desired and real (simulated)')
         [q; double([qmread])];
         % ----------------------
         
@@ -175,7 +175,8 @@ if (clientID>-1)
         % -----------------------
         sres.qm(:,i) = qm;  sres.qm_dot(:,i) = qm_dot;  
         sres.qd(:,i) = q';  sres.qd_dot(:,i) = dq';  sres.qd_ddot(:,i) = ddq'; 
-        sres.T(:,:,i) = T1; 
+        sres.xdq(:,i) = vec4(xdq.translation); sres.cdq(:,i) = vec4(cdq.translation);
+        
         % -----------------------        
         
         % Using the dynamic model
@@ -187,11 +188,11 @@ if (clientID>-1)
         tauf = get_FrictionTorque(qm_dot);                
         
         %% Controller gains;
-        kd = (1/cdt); %derivative gain
-%       kd = (0.8/cdt);
+%       kd = (1/cdt); %derivative gain
+        %kd = (0.8/cdt);
 
-%       kp = (5/cdt);   
-        kp = (10/cdt); %proportional gain
+        %kp = (5/cdt);   
+%       kp = (10/cdt); %proportional gain
         
         % Stiffness matrix
         K = eye(8)*1000; 
@@ -202,14 +203,15 @@ if (clientID>-1)
 %        tau = M*(ddq' + kd*(dq'-qm_dot) + kp*(q'-qm)) +c + g;
 
 %%       Task-space inverse dynamics with fb linearization
-         kp = 1000;
-         kd = 300;
-         ki = 30; %integal gain 
+         kp = 10;
+         kd = 2;
+         ki = 0*30; %integral gain 
+         
          %% Define error (task-space)
          e = vec8(cdq - xdq);
          de = Jp*(dq'- qm_dot);
          ei = de*cdt + e;
-         y = pinv(Jp)*(Jp_dot*(dq'- qm_dot) + Jp*ddq' + kp*eye(8)*e + kd*eye(8)*de + 0*ki*eye(8)*ei);
+         y = pinv(Jp)*(Jp_dot*(dq'- qm_dot) + Jp*ddq' + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
          tau = M*y + c + g;           
 
          %Sent torque commands
@@ -240,7 +242,7 @@ if (clientID>-1)
         %---------------------------------
         i = i+1;        
     end
-   
+    
     % Now close the connection to V-REP:
     sim.simxStopSimulation(clientID,sim.simx_opmode_blocking);
     sim.simxFinish(clientID);
@@ -352,4 +354,20 @@ hold on, grid on
 plot(tt,sres.tau_read(:,7),'y','LineWidth',2);
 legend('tsend','tread'); 
 
-%%Plot ee-positions
+%%Plot ee-position
+figure();
+plot(tt,sres.cdq(2,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(2,:),'c','LineWidth',2);
+legend('xd','x')
+figure();
+plot(tt,sres.cdq(3,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(3,:),'c','LineWidth',2);
+legend('yd','y')
+figure()
+plot(tt,sres.cdq(4,:),'c--','LineWidth',3); 
+hold on, grid on
+plot(tt,sres.xdq(4,:),'c','LineWidth',2);
+legend('zd','z')
+

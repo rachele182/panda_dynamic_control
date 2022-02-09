@@ -11,6 +11,7 @@ for i=1:7
 end
 handles.armJoints = armJoints;
 
+
 %% streaming
 for i=1:7
     vrep.simxGetJointPosition(id,armJoints(i),vrep.simx_opmode_streaming);

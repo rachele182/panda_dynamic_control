@@ -52,7 +52,7 @@ classdef FEpVrepRobot < DQ_VrepRobot
                             FEp_DH_a;
                             FEp_DH_alpha];
             
-            kin = DQ_SerialManipulator(FEp_DH_matrix,'standard');
+            kin = DQ_SerialManipulator(FEp_DH_matrix,'modified');
             % We set the transformation from the world frame to the robot
             % base frame. Therefore, the end-effector pose is given by
             % pose_effector = transformation_from_world_to_base*fkm(q);

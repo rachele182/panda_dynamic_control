@@ -93,7 +93,7 @@ if (clientID>-1)
     % Saving data to analyze later
     sres.qm = [];  sres.qm_dot = []; 
     sres.qd = [];  sres.qd_dot = [];  sres.qd_ddot = [];
-    sres.T = [];
+    sres.T = [];   sres.xdq = []; sres.cdq = [];
     %---------------------------------------    
     
     % time
@@ -121,7 +121,7 @@ if (clientID>-1)
         % Current EE configuration
         disp('Current EE configuration')
         xdq = fep.fkm(qm); %current ee-pose
-        T1 = DQuaternionToMatrix(xdq.q')
+        T1 = DQuaternionToMatrix(xdq.q');
         x = T1(1:3,4); %current ee_position
         
         % Current joint derivative (Euler 1st order derivative)
@@ -147,7 +147,7 @@ if (clientID>-1)
         % from the desired to actual joint configurations
         % -----------------------
         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(vec8(cdq-xdq)))])
-        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(translation(normalize(cdq-xdq)))))])       
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(cdq.translation-xdq.translation)))])       
         % Vector with both joints: desired vs real (simulated)
         disp('Vector with both joints: desired and real (simulated)')
         [q; double([qmread])]
@@ -166,12 +166,12 @@ if (clientID>-1)
         sres.T(:,:,i) = T1; sres.xdq(:,i) = vec4(xdq.translation); sres.cdq(:,i) = vec4(cdq.translation);
         
         % -----------------------        
-        %% Impedance control
+        %% Motion Control
         % Using the dynamic model
         O = zeros(1,6);
         I = eye(3);
         A = [O; I zeros(3,1) zeros(3,1) zeros(3,1); ...
-             O;zeros(3,1) zeros(3,1)  zeros(3,1) I;];
+             O;zeros(3,1) zeros(3,1)  zeros(3,1) I;]; %mapping
         g = get_GravityVector(qm);
         c = get_CoriolisVector(qm,qm_dot);
         M = get_MassMatrix(qm);
@@ -180,19 +180,22 @@ if (clientID>-1)
         Km = eye(8)*20; 
         Dm = eye(8)*5; 
         % define error 
-        e = haminus8(DQ(C8*vec8(cdq)))*vec8(cdq - xdq);
-        e_dot = haminus8(DQ(C8*Jp*dq'))*vec8(cdq - xdq) + haminus8(DQ(C8*vec8(cdq)))*Jp*(dq' - qm_dot);
+        xe = vec8(cdq - xdq);
+        dxe = Jp*dq' - Jp*qm;
+        e = haminus8(DQ(C8*vec8(cdq)))*xe;
+        e_dot = haminus8(DQ(C8*Jp*dq'))*xe + haminus8(DQ(C8*vec8(cdq)))*dxe;
         % define cl dynamics
         y =  Dm*e_dot + Km*e;
         ddxr = Jp_dot*dq' + Jp*ddq';
         J = geomJ(fep,qm);
         Jg2 = A*J;
         % control input task space
-        ax = haminus8(DQ(ddxr)')*vec8(cdq - xdq) + 2*haminus8(DQ(C8*Jp*dq'))*Jp*(dq' - qm_dot)+ haminus8(DQ(C8*vec8(cdq)))*(ddxr - Jp_dot*qm_dot) + y; 
+        ax = haminus8(DQ(ddxr)')*xe + 2*haminus8(DQ(C8*Jp*dq'))*dxe + haminus8(DQ(C8*vec8(cdq)))*(ddxr - Jp_dot*qm_dot) + y; 
         J_inv = pinv(haminus8(DQ(C8*vec8(cdq)))*Jp);
         %control input joint space
         aq = J_inv*ax; 
-%         aq = Jg2'*ax;
+%       aq = Jg2'*ax;
+
         %fb linearization
         tau = M*aq + c + g ;
         

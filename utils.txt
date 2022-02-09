@@ -1,0 +1,18 @@
+%% Info on coppeliaSim/Matlab connection
+https://www.coppeliarobotics.com/helpFiles/en/remoteApiFunctionsMatlab.htm
+
+%check this for torque sign
+https://github.com/studywolf/blog/blob/master/SymPy/ur5_ctrl.py
+
+%tutorial frankaros_coppeliasim
+http://docs.ros.org/en/noetic/api/visp_ros/html/tutorial-franka-coppeliasim.html
+
+%problems with sign
+https://forum.coppeliarobotics.com/viewtopic.php?t=497
+
+GIT TOKEN
+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
+
+NB
+%%%%% DH CONVENTION --> with modified DH the fkm return the position of franka connection (0.04 error on x position which is the x position of joint 1 in vrep)
+with standard it does not. 
