@@ -198,9 +198,9 @@ if (clientID>-1)
         D = eye(8)*5;                                                                    
 
 %%       Task-space inverse dynamics with fb linearization
-         kp = 1000;
-         kd = 100;
-         ki = 500; %integral gain 
+         kp = 100;
+         kd = 10;
+         ki = 50; %integral gain 
         
         %% define error 
         xe = vec8(cdq - xdq);
