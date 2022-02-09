@@ -52,17 +52,15 @@ vi = DQ_VrepInterface;
 fep_vreprobot = FEpVrepRobot('Franka',vi);
 
 %% Load DQ Robotics kinematics
-fep  = fep_vreprobot.kinematics(); %% ATTENTION: DH CONVENTION
 
 if (clientID>-1)
     disp('Connected to remote API server');
     
     handles = get_joint_handles(sim,clientID);
     joint_handles = handles.armJoints;
-    utils = GetHandles(clientID, sim);   
-    pose_joints = GetPoseJoints(clientID, sim, utils.worldFrame2, joint_handles);
-    fep.set_reference_frame(pose_joints(1));
-    pause(0.3);
+%     utils = GetHandles(clientID, sim);   
+%     pose_joints = GetPoseJoints(clientID, sim, utils.worldFrame, joint_handles);
+    fep  = fep_vreprobot.kinematics(); 
     
     % get initial state of the robot
     qstr = '[ ';
@@ -203,17 +201,24 @@ if (clientID>-1)
 %        tau = M*(ddq' + kd*(dq'-qm_dot) + kp*(q'-qm)) +c + g;
 
 %%       Task-space inverse dynamics with fb linearization
-         kp = 10;
-         kd = 2;
-         ki = 0*30; %integral gain 
+         kp = 1000;
+         kd = 100;
+         ki = 500; %integral gain 
          
          %% Define error (task-space)
          e = vec8(cdq - xdq);
          de = Jp*(dq'- qm_dot);
          ei = de*cdt + e;
          y = pinv(Jp)*(Jp_dot*(dq'- qm_dot) + Jp*ddq' + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
-         tau = M*y + c + g;           
-
+         tau = M*y + c + g;   
+         N = haminus8(cdq)*DQ.C8*Jp;
+         robustpseudoinverse = N'*pinv(N*N' + 0.1*eye(8));
+        %%%%%%%%% null space control %%%%%%%%%
+         P = eye(7) - pinv(N)*N;
+         D_joints = eye(7)*2;
+         tau_null = P*(-D_joints*qm_dot);
+         tau = tau + tau_null;
+         
          %Sent torque commands
          tau_send = tau;
          sres.tau_send(:,i) = tau_send;
@@ -238,7 +243,6 @@ if (clientID>-1)
         sres.tau_read(i,:) = tau_read_data';
         %---------------------------------
         sim.simxSynchronousTrigger(clientID);
-        pause(0.002) %change this maybe??
         %---------------------------------
         i = i+1;        
     end

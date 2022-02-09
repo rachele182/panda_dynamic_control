@@ -1,4 +1,4 @@
-%% Test task space controller
+%% Test torque control vrep
 clear;
 clc;
 close all;
@@ -7,14 +7,15 @@ close all;
 include_namespace_dq;
 
 %% Compute desired joint space trajectory
-q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
-
+q_in = [1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
+%q_in = [0 0 0 -1.5708 0 1.5708 0]';
+ 
 %% Generate desired joint_space trajectory
 cdt = 0.010; %sampling time
 tt = 0:cdt:2; %simulation time
 
-%% neighbourhood waypoints 
-q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
+%% neighbourhood waypoints (converges fast with joint space controller and kp = 1000, kd=50);
+q1 = q_in  +[0;0;0;deg2rad(-5);0;0;0];
 q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
 q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
@@ -23,7 +24,17 @@ q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 tWaypoints = [0,0.5,1,1.5,2];
 qWaypoints = [q1,q2,q3,q4,q5]';
 
+%% Circular trajectory
+%load test_free_motion_jerk_traj.mat
+% q1 = out.q.Data;
+% tWaypoints = [0,0.5,1,1.5,2];
+% qWaypoints = [q1(1,:);q1(51,:);q1(101,:);q1(151,:);q1(201,:)];
+
+
+%% Generate trajectory joint space
+
 [qDesired, qdotDesired, qddotDesired, tt] = refTrajectoryGeneration(tWaypoints, qWaypoints, tt);
+
 
 %% Connect to vrep
 
@@ -41,15 +52,15 @@ vi = DQ_VrepInterface;
 fep_vreprobot = FEpVrepRobot('Franka',vi);
 
 %% Load DQ Robotics kinematics
-fep  = fep_vreprobot.kinematics();
 
 if (clientID>-1)
     disp('Connected to remote API server');
     
     handles = get_joint_handles(sim,clientID);
     joint_handles = handles.armJoints;
-    
-    pause(0.3);
+%     utils = GetHandles(clientID, sim);   
+%     pose_joints = GetPoseJoints(clientID, sim, utils.worldFrame, joint_handles);
+    fep  = fep_vreprobot.kinematics(); 
     
     % get initial state of the robot
     qstr = '[ ';
@@ -68,27 +79,25 @@ if (clientID>-1)
     disp(qstr);
     disp('Initial Joint Velocities: ');
     disp(qdotstr);
-   
-    % Setting to synchronous mode
+    
+    
+    %% Setting to synchronous mode
     %---------------------------------------
     sim.simxSynchronous(clientID,true)   
     sim.simxSynchronousTrigger(clientID)
     sim.simxSetFloatingParameter(clientID, sim.sim_floatparam_simulation_time_step, cdt, sim.simx_opmode_oneshot)
-
-
+    
     %  start our simulation in lockstep 
     sim.simxStartSimulation(clientID, sim.simx_opmode_blocking);
     %---------------------------------------
     
-    % Getting joint-positions
+    %% Get joint positions
     %---------------------------------------
     for j=1:7
         [~,tauOrig(j)] = sim.simxGetJointForce(clientID,joint_handles(j),sim.simx_opmode_blocking);
         [~,qmread(j)]  = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_blocking);
-        [res,qdot(j)] = sim.simxGetObjectFloatParameter(clientID,joint_handles(j),2012,sim.simx_opmode_blocking);
     end      
     qm = double([qmread])';
-    qdot_m = double([qdot])';
 
     % Saving data to analyze later
     sres.qm = [];  sres.qm_dot = []; 
@@ -97,61 +106,62 @@ if (clientID>-1)
     %---------------------------------------    
     
     % time
-    inittime = sim.simxGetLastCmdTime(clientID);
+    inittime = sim.simxGetLastCmdTime(clientID)
     
 %% Control loop   
-    while sim.simxGetConnectionId(clientID)~=-1
+     while sim.simxGetConnectionId(clientID)~=-1
         
         if i>size(qDesired,1)
             break
         end
         
+        % Getting joint-position
         %---------------------------------------    
         for j=1:7
             [~,tauOrig(j)] = sim.simxGetJointForce(clientID,joint_handles(j),sim.simx_opmode_blocking);
             [~,qmread(j)]  = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_blocking);
-            [res,qdot(j)] = sim.simxGetObjectFloatParameter(clientID,joint_handles(j),2012,sim.simx_opmode_blocking);
         end      
         qmOld = qm;
         % Current joint configuration 
-        disp('Measured joint position')
-        qm = double([qmread])' %current joint postions
-        qdot_m = double([qdot])' %curent joint velocities
+        disp('Measured joint position');
+        qm = double([qmread])';
         
         % Current EE configuration
-        disp('Current EE configuration')
-        xdq = fep.fkm(qm); %current ee-pose
-        T1 = DQuaternionToMatrix(xdq.q');
-        x = T1(1:3,4); %current ee_position
+        disp('Current EE configuration');
+        xdq = fep.fkm(qm); %DQ pose
+        
+        % Pose Jacobian
+        Jp = fep.pose_jacobian(qm);
+        
+        % Geometric Jacobian
+        J = geomJ(fep,qm);
+        
+        % Translation Jacobian
+        J_t = J(4:6,:);
         
         % Current joint derivative (Euler 1st order derivative)
-        qm_dot_calculated = (qm-qmOld)/cdt;
-        qm_dot = qdot_m;
-
-        %Get jacobians
-        Jp = fep.pose_jacobian(qm);
-        Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
+        qm_dot = (qm-qmOld)/cdt; %computed as vrep function 
         
+        % Pose Jacobian first-time derivative 
+        Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
-
+        
         % Desired joint positions
         q = qDesired(i,:);
         
-        % Desired Cartesian positions
-        cdq = fep.fkm(q);
-%         xd = cdq.q;
-        T2 = DQuaternionToMatrix(cdq.q');
-        xd = T2(1:3,4);
-        
+        % Desired Cartesian pose
+        cdq = fep.fkm(q); 
+       
         % Printing the time step of the simulation and the error
-        % from the desired to actual joint configurations
         % -----------------------
+        %disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])  
         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(vec8(cdq-xdq)))])
-        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(cdq.translation-xdq.translation)))])       
+        disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(cdq.translation-xdq.translation)))])
+        
         % Vector with both joints: desired vs real (simulated)
-        disp('Vector with both joints: desired and real (simulated)')
-        [q; double([qmread])]
-        % -----------------------
+        %disp('Vector with both joints: desired and real (simulated)')
+        [q; double([qmread])];
+        % ----------------------
         
         % Desired joint velocities
         dq = qdotDesired(i,:);
@@ -163,7 +173,7 @@ if (clientID>-1)
         % -----------------------
         sres.qm(:,i) = qm;  sres.qm_dot(:,i) = qm_dot;  
         sres.qd(:,i) = q';  sres.qd_dot(:,i) = dq';  sres.qd_ddot(:,i) = ddq'; 
-        sres.T(:,:,i) = T1; sres.xdq(:,i) = vec4(xdq.translation); sres.cdq(:,i) = vec4(cdq.translation);
+        sres.xdq(:,i) = vec4(xdq.translation); sres.cdq(:,i) = vec4(cdq.translation);
         
         % -----------------------        
         %% Motion Control
@@ -172,37 +182,60 @@ if (clientID>-1)
         I = eye(3);
         A = [O; I zeros(3,1) zeros(3,1) zeros(3,1); ...
              O;zeros(3,1) zeros(3,1)  zeros(3,1) I;]; %mapping
+        
+        % Using the dynamic model
         g = get_GravityVector(qm);
         c = get_CoriolisVector(qm,qm_dot);
         M = get_MassMatrix(qm);
-        tauf = get_FrictionTorque(qm_dot);
-        %set gains
-        Km = eye(8)*20; 
-        Dm = eye(8)*5; 
-        % define error 
+        % The vrep model does not account for friction torques. Including
+        % them leads to bad behaviour. 
+        tauf = get_FrictionTorque(qm_dot);                
+        
+        %% Controller gains;
+        % Stiffness matrix
+        K = eye(8)*1000; 
+        % Damping matrix
+        D = eye(8)*5;                                                                    
+
+%%       Task-space inverse dynamics with fb linearization
+         kp = 1000;
+         kd = 100;
+         ki = 500; %integral gain 
+        
+        %% define error 
         xe = vec8(cdq - xdq);
-        dxe = Jp*dq' - Jp*qm;
+        dxe = Jp*dq' - Jp*qm_dot;
         e = haminus8(DQ(C8*vec8(cdq)))*xe;
         e_dot = haminus8(DQ(C8*Jp*dq'))*xe + haminus8(DQ(C8*vec8(cdq)))*dxe;
-        % define cl dynamics
-        y =  Dm*e_dot + Km*e;
+        
+        %% define cl dynamics
+        y =  kd*e_dot +kp*e;
         ddxr = Jp_dot*dq' + Jp*ddq';
         J = geomJ(fep,qm);
         Jg2 = A*J;
-        % control input task space
+        
+        %% control input task space
         ax = haminus8(DQ(ddxr)')*xe + 2*haminus8(DQ(C8*Jp*dq'))*dxe + haminus8(DQ(C8*vec8(cdq)))*(ddxr - Jp_dot*qm_dot) + y; 
         J_inv = pinv(haminus8(DQ(C8*vec8(cdq)))*Jp);
         %control input joint space
         aq = J_inv*ax; 
 %       aq = Jg2'*ax;
 
-        %fb linearization
+        %% fb linearization
         tau = M*aq + c + g ;
+        N = haminus8(cdq)*DQ.C8*Jp;
+        robustpseudoinverse = N'*pinv(N*N' + 0.1*eye(8));
+        %%%%%%%%% null space control %%%%%%%%%
+        P = eye(7) - pinv(N)*N;
+        D_joints = eye(7)*2;
+        tau_null = P*(-D_joints*qm_dot);
+        tau = tau + tau_null;
         
         %store for later
         tau_send = tau;
         sres.tau_send(:,i) = tau_send;
         
+        %% Send torques to Vrep
         for j=1:7
             if tau(j)<0
                 set_vel = -99999;
@@ -217,21 +250,12 @@ if (clientID>-1)
             tau_read_data(:,j) = tau_read;
 %             sres.tau_read(:,j) = tau_read_data;
 
-            %---------------------------------
-            
-
+            %---------------------------------  
         end
         sres.tau_read(i,:) = tau_read_data';
-        % In synchronous mode this is not necessary        
-%         sim.simxPauseCommunication(clientID, 0);
-        % Move vrep simulation one step up (pause to allow vrep
-        % computations to work properly (just a safe measure, perhaps we do
-        % need it)
         %---------------------------------
         sim.simxSynchronousTrigger(clientID);
-        pause(0.002)
         %---------------------------------
-        
         i = i+1;        
     end
    

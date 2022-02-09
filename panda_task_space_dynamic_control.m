@@ -7,17 +7,27 @@ close all;
 
 include_namespace_dq;
 
-% Precomputed Trajectory in the Joint Space
-load fepwaypoints-1.mat
-% tWaypoints = [0,0.5,1,1.5,2];
-% Sampling time 
-cdt = 0.0010;
-tt = 0:cdt:0.5;
+%% Compute desired joint space trajectory
+q_in = [ 1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
+
+%% Generate desired joint_space trajectory
+cdt = 0.010; %sampling time
+tt = 0:cdt:2; %simulation time
+
+%% neighbourhood waypoints 
+q1 = q_in + [0;0;0;deg2rad(-5);0;0;0];
+q2 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+q3 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+q4 = q_in + [0;deg2rad(-10);0;0;0;0;0];
+q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
+
+tWaypoints = [0,0.5,1,1.5,2];
+qWaypoints = [q1,q2,q3,q4,q5]';
 [qDesired, qdotDesired, qddotDesired, tt] = refTrajectoryGeneration(tWaypoints, qWaypoints, tt);
-qDesired(1:1000*0.5,:);
-qdotDesired(1:1000*0.5,:);
-qddotDesired(1:1000*0.5,:);
-tt(:,1:1000*0.5);
+% qDesired(1:1000*0.5,:);
+% qdotDesired(1:1000*0.5,:);
+% qddotDesired(1:1000*0.5,:);
+% tt(:,1:1000*0.5);
 
 %% Connect to vrep
 

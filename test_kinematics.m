@@ -20,16 +20,23 @@ vi = DQ_VrepInterface;
 fep_vreprobot = FEpVrepRobot('Franka',vi);
 
 %% Load DQ Robotics kinematics
-fep  = fep_vreprobot.kinematics();
+% fep.base_frame = (fep_vreprobot.vrep_interface.get_object_pose(fep_vreprobot.base_frame_name));
+
 
 if (clientID>-1)
     disp('Connected to remote API server');
 else
     disp('Vrep disconneted')
 end
-    handles = get_joint_handles(sim,clientID);
-    utils = GetHandles(clientID, sim);   
+    handles = get_joint_handles(sim,clientID);   
     joint_handles = handles.armJoints;
+    utils = GetHandles(clientID, sim);   
+    pose_joints = GetPoseJoints(clientID, sim, utils.worldFrame, joint_handles);
+%     fep.set_base_frame(pose_joints(1));
+
+
+fep  = fep_vreprobot.kinematics();
+
     pause(0.3);
     
     % get initial state of the robot
@@ -51,8 +58,8 @@ end
     disp(qdotstr)
     
     
-    q_in2 = [1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint conf of franka scene
-%   q_in2 = [0 0 0 -1.5708 0 1.5708 0]';  %initial joint conf of free motion (to test flange orientation easily)
+%     q_in2 = [1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint conf of franka scene
+  q_in2 = [0 0 0 -1.5708 0 1.5708 0]';  %initial joint conf of free motion (to test flange orientation easily)
     pos_in = fep.fkm(q_in2).translation; %initial EE position
     p0 = vec4(pos_in)
     phi = fep.fkm(q_in2).rotation_angle
