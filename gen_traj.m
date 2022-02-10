@@ -1,7 +1,7 @@
 
 function [xd,dxd,ddxd] = gen_traj(x_in,time)
+%% Description: generates minimum jerk task-space trajectory
 %%initialize
-
 xd = [zeros(size(time,2),8)];
 dxd = [zeros(size(time,2),8)];
 ddxd = [zeros(size(time,2),8)];
