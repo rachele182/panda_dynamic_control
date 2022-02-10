@@ -24,13 +24,6 @@ q5 = q_in + [0;deg2rad(+10);0;0;0;0;0];
 tWaypoints = [0,0.5,1,1.5,2];
 qWaypoints = [q1,q2,q3,q4,q5]';
 
-%% Circular trajectory
-%load test_free_motion_jerk_traj.mat
-% q1 = out.q.Data;
-% tWaypoints = [0,0.5,1,1.5,2];
-% qWaypoints = [q1(1,:);q1(51,:);q1(101,:);q1(151,:);q1(201,:)];
-
-
 %% Generate trajectory joint space
 
 [qDesired, qdotDesired, qddotDesired, tt] = refTrajectoryGeneration(tWaypoints, qWaypoints, tt);

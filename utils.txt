@@ -11,7 +11,8 @@ http://docs.ros.org/en/noetic/api/visp_ros/html/tutorial-franka-coppeliasim.html
 https://forum.coppeliarobotics.com/viewtopic.php?t=497
 
 GIT TOKEN
-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
+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
+
 NB
 %%%%% DH CONVENTION --> with modified DH the fkm return the position of franka connection (0.04 error on x position which is the x position of joint 1 in vrep)
 with standard it does not. 
