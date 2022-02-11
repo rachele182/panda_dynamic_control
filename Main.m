@@ -38,7 +38,7 @@ FEp_DH_matrix = [FEp_DH_theta; FEp_DH_d; FEp_DH_a; FEp_DH_alpha];
 franka = DQ_SerialManipulator(FEp_DH_matrix,'standard');
 
 %%Initial conditions
-q_in = [1.1519 0.38397 0.2618 -1.5708 0 1.3963 0]'; %initial joint angles
+q_in = [ 1.1515    0.3950    0.2619   -1.5722   -0.0002    1.3958    0.0001]'; %rad
 q1 = q_in  +[0;0;0;deg2rad(-5);0;0;0];
 x_in = franka.fkm(q_in); 
 x_in_2 = franka.fkm(q1);

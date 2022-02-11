@@ -2,8 +2,8 @@
 
 %% COMPARE (FREE MOTION)
 %des trajectory
-% [xd,dxd,ddxd] = gen_traj(x_in,time);
-[xd,dxd,ddxd] = circ_traj(x_in,time); 
+[xd,dxd,ddxd] = gen_traj(x_in,time);
+% [xd,dxd,ddxd] = circ_traj(x_in,time); 
 
 psi_ext = zeros(6,1);
 %complian traj

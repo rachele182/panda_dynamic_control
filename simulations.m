@@ -1,18 +1,19 @@
 %% TEST MOTION CONTROL TASK SPACE TRAJECTORY
-clear;
-clc;
-close all;
 
 %%Addpath 
 include_namespace_dq;
 
-%% Reference trajectory
+%% Desired trajectory
 cdt = 0.01; %sampling time (10ms)
 tt = 0:cdt:2; %simulation time
 
-[xd, dxd, ddxd] = gen_traj(x_in,time);
+% [xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
+[xd1, dxd1, ddxd1] = circ_traj(x_in,time);
 
-%% Connect to vre
+psi_ext = zeros(6,1);
+[xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext,time,x_in,dx_in,Md,Kd,Bd); %(compliant trajectory) 
+
+%% Connect to VREP
 
 disp('Program started');
 sim=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
@@ -37,8 +38,6 @@ if (clientID>-1)
     for j=1:7
         [res,q(j)] = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_buffer);
         [res,qdot(j)] = sim.simxGetObjectFloatParameter(clientID,joint_handles(j),2012,sim.simx_opmode_buffer);
-        qstr = [qstr,num2str(q(j)),' '];
-        qdotstr = [qdotstr,num2str(qdot(j)),' '];
     end
    
     
@@ -61,7 +60,7 @@ if (clientID>-1)
     
     % Saving data to analyze later
     sres.xd = [];  sres.xd_dot = [];  sres.xd_ddot = [];
-    sres.x = []; 
+    sres.x = []; sres.xref = [];
     %---------------------------------------    
     % time
     inittime = sim.simxGetLastCmdTime(clientID);
@@ -95,31 +94,36 @@ if (clientID>-1)
         % Current joint derivative (Euler 1st order derivative)
         qm_dot = (qm-qmOld)/cdt; %computed as vrep function 
         
-        %Current dx
+        %Current 1st-time derivative of EE pose
         dx = Jp*qm_dot;
         
         % Pose Jacobian first-time derivative 
         Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
         
-        % Desired trajectory position,velocity acceleration
-        xd_des = xd(i,:);
-        dxd_des = dxd(i,:);
-        ddxd_des = ddxd(i,:); 
+        % Compliant trajectory position,velocity acceleration
+        xd_des = xd(i,:)';
+        dxd_des = dxd(i,:)';
+        ddxd_des = ddxd(i,:)'; 
         
+        %Desired trajectory
+        xd1_str = xd1(i,:);
+        dx1_str = dxd1(i,:);
+        ddxd1_str = ddxd1(i,:);
+       
        
         % Printing the time step of the simulation and the error
         % -----------------------
-        %disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm( q'-qm ))])  
+       
         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - error:',num2str(norm(xd_des-x))])
         disp(['it: ',num2str(i),' time(',num2str(i*cdt),') - pos error:',num2str(norm(vec4(DQ(xd_des).translation-DQ(x).translation)))])
-        
         
         % Saving data to analyze later
         % -----------------------
         
         sres.xd(:,i) = vec4(DQ(xd_des).translation);  sres.xd_dot(:,i) = dxd_des;  sres.xd_ddot(:,i) = ddxd_des;
         sres.x(:,i) = vec4(DQ(x).translation); 
+        sres.xref(:,i) = vec4(DQ(xd1_str).translation);
       
         % -----------------------        
         
@@ -128,12 +132,6 @@ if (clientID>-1)
         c = get_CoriolisVector(qm,qm_dot);
         M = get_MassMatrix(qm); 
         tauf = get_FrictionTorque(qm_dot);                
-        
-        %% Controller gains
-        % Stiffness matrix
-        K = eye(8)*1000; 
-        % Damping matrix
-        D = eye(8)*5;    
 
 %%       Task-space inverse dynamics with fb linearization
          kp = 1000;
@@ -147,7 +145,7 @@ if (clientID>-1)
          y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
          tau = M*y + c + g; 
          
-         N = haminus8(xd_des)*DQ.C8*Jp;
+         N = haminus8(DQ(xd_des))*DQ.C8*Jp;
          robustpseudoinverse = N'*pinv(N*N' + 0.1*eye(8));
          
          %%%%%%%% null space control %%%%%%%%%
@@ -226,17 +224,23 @@ legend('tsend','tread');
 
 %%Plot ee-position
 figure();
-plot(tt,sres.xd(2,:),'c--','LineWidth',3); 
+plot(tt,sres.xd(2,:),'r','LineWidth',2); 
 hold on, grid on
 plot(tt,sres.x(2,:),'c','LineWidth',2);
-legend('xd','x')
+hold on, grid on
+plot(tt,sres.xref(2,:),'b','LineWidth',2)
+legend('xc','x','xd')
 figure();
-plot(tt,sres.xd(3,:),'c--','LineWidth',3); 
+plot(tt,sres.xd(3,:),'r','LineWidth',2); 
 hold on, grid on
 plot(tt,sres.x(3,:),'c','LineWidth',2);
-legend('yd','y')
+hold on,grid on
+plot(tt,sres.xref(3,:),'b','LineWidth',2)
+legend('yc','y','yd')
 figure()
-plot(tt,sres.xd(4,:),'c--','LineWidth',3); 
+plot(tt,sres.xd(4,:),'r','LineWidth',2); 
 hold on, grid on
 plot(tt,sres.x(4,:),'c','LineWidth',2);
-legend('zd','z')
+hold on,grid on
+plot(tt,sres.xref(4,:),'b','LineWidth',2)
+legend('zc','z','zd')
