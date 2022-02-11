@@ -7,8 +7,8 @@ include_namespace_dq;
 cdt = 0.01; %sampling time (10ms)
 tt = 0:cdt:2; %simulation time
 
-% [xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
-[xd1, dxd1, ddxd1] = circ_traj(x_in,time);
+[xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
+% [xd1, dxd1, ddxd1] = circ_traj(x_in,time);
 
 psi_ext = zeros(6,1);
 [xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext,time,x_in,dx_in,Md,Kd,Bd); %(compliant trajectory) 
