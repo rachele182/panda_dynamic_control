@@ -21,7 +21,8 @@ q_max = [ 2.8973    1.7628    2.8973  -0.0698    2.8973    3.7525    2.8973];
 C8 = diag([1, -1, -1, -1, 1, -1, -1, -1]);
 threshold = 1e-12; 
 cdt = 0.01; %sampling time
-time = 0:cdt:2; %simulation time
+time = 0:cdt:5; %simulation time
+tt = time; 
 
 %% Admittance controller
 I = eye(6);
@@ -40,10 +41,14 @@ franka = DQ_SerialManipulator(FEp_DH_matrix,'standard');
 
 %%Initial conditions
 q_in = [ 1.1515    0.3950    0.2619   -1.5722   -0.0002    1.3958    0.0001]'; %rad
-q1 = q_in  +[0;0;0;deg2rad(-5);0;0;0];
 x_in = franka.fkm(q_in); 
-x_in_2 = franka.fkm(q1);
+p0_in = vec4(x_in.translation);
+r0_in = vec4(P(x_in));
 dx_in = zeros(8,1);
+
+%Initial cond admittance controller
+%trajectory circ y-z
+% xd_in = vec8(r0_in + 0.5*DQ.E*DQ([0;p0_in(2);p0_in(3)+0.125;p0_in(4)])*DQ(r0_in));
 xr_in = x_in; 
 xd_in = x_in; 
 e_in = vec8(DQ(xr_in)'*DQ(xd_in));

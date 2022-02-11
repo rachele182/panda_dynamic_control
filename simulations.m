@@ -1,14 +1,14 @@
 %% TEST MOTION CONTROL TASK SPACE TRAJECTORY
-
+run Main
 %%Addpath 
 include_namespace_dq;
 
 %% Desired trajectory
 cdt = 0.01; %sampling time (10ms)
-tt = 0:cdt:2; %simulation time
 
-[xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
-% [xd1, dxd1, ddxd1] = circ_traj(x_in,time);
+
+% [xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
+[xd1, dxd1, ddxd1] = circ_traj(x_in,time);
 
 psi_ext = zeros(6,1);
 [xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext,time,x_in,dx_in,Md,Kd,Bd); %(compliant trajectory) 
@@ -142,7 +142,7 @@ if (clientID>-1)
          e = xd_des - x;
          de = dxd_des - dx;
          ei = de*cdt + e;
-         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
+         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + 0*ki*eye(8)*ei);
          tau = M*y + c + g; 
          
          N = haminus8(DQ(xd_des))*DQ.C8*Jp;

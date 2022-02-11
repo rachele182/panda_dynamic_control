@@ -2,8 +2,8 @@
 
 %% COMPARE (FREE MOTION)
 %des trajectory
-[xd,dxd,ddxd] = gen_traj(x_in,time);
-% [xd,dxd,ddxd] = circ_traj(x_in,time); 
+% [xd,dxd,ddxd] = gen_traj(x_in,time);
+[xd,dxd,ddxd] = circ_traj(x_in,time); 
 psi_ext = zeros(6,1);
 %complian traj
 
@@ -23,45 +23,10 @@ for j = 1:size(time,2)
     yr(j,:) = [pos_r(j,2),pos_r(j,3),pos_r(j,4)];
 end
 
-% figure()
-% tiledlayout(3,1) 
-% nexttile
-% plot(time, pos_d(:,2), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
-% hold on 
-% grid on
-% plot(time, pos_r(:,2), 'Linewidth',1.5, 'Color', 'b')
-% hold on
-% grid on
-% xlabel('time [s]')
-% ylabel('x [m]')
-% legend('des','comp')
-% nexttile
-% plot(time, pos_d(:,3), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
-% hold on 
-% grid on
-% plot(time, pos_r(:,3), 'Linewidth',1.5, 'Color', 'b')
-% hold on
-% grid on
-% xlabel('time [s]')
-% ylabel('y [m]')
-% legend('des','comp')
-% 
-% nexttile
-% plot(time, pos_d(:,4), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
-% hold on 
-% grid on
-% plot(time, pos_r(:,4), 'Linewidth',1.5, 'Color', 'b')
-% hold on
-% grid on
-% xlabel('time [s]')
-% ylabel('z [m]')
-% legend('des','comp')
-% 
-
 figure()
 tiledlayout(3,1) 
 nexttile
-plot(time, out.sim.Data(:,1), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,2), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
 plot(time, pos_r(:,2), 'Linewidth',1.5, 'Color', 'b')
@@ -69,9 +34,9 @@ hold on
 grid on
 xlabel('time [s]')
 ylabel('x [m]')
-legend('ok','comp')
+legend('des','comp')
 nexttile
-plot(time, out.sim.Data(:,2), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,3), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
 plot(time, pos_r(:,3), 'Linewidth',1.5, 'Color', 'b')
@@ -79,9 +44,10 @@ hold on
 grid on
 xlabel('time [s]')
 ylabel('y [m]')
-legend('ok','comp')
+legend('des','comp')
+
 nexttile
-plot(time, out.sim.Data(:,3), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,4), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
 plot(time, pos_r(:,4), 'Linewidth',1.5, 'Color', 'b')
@@ -89,6 +55,6 @@ hold on
 grid on
 xlabel('time [s]')
 ylabel('z [m]')
-legend('ok','comp')
+legend('des','comp')
 
 

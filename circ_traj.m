@@ -14,9 +14,9 @@ z0 = p0(4);
 
 i = 1;
 for i = 1:size(t,2)
-    p = [0; x0; y0 + cos(2*t(i))/8; z0 + sin(2*t(i))/8];
-    dp = [0; 0; -sin(2*t(i))/4; cos(2*t(i))/4];
-    ddp = [0; 0; -cos(2*t(i))/2; - sin(2*t(i))/2];
+    p = [0; x0; y0 + cos(t(i))/8; z0 + sin(t(i))/8];
+    dp = [0; 0; -sin(t(i))/8; cos(t(i))/8];
+    ddp = [0; 0; -cos(t(i))/8; - sin(t(i))/8];
     
     %2DQ
     x = vec8(DQ(r0) + 0.5*DQ.E*(DQ(p)*DQ(r0)));
