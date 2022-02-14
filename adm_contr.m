@@ -2,7 +2,7 @@ function [xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md,Kd,Bd)
 
 %% Description: admittance controller to enforce an apparent impedance behaviour at task-space
 %%inputs: xd,dxd,ddxd = desired reference trajectory
-%         psi_ext = external wrench on EE
+%         psi_ext = external wrench on EE (with respect to compliant reference frame)
 %         time = simulation time
 %         Md,Kd,Bd = impedance matrices 
 %outpus:  xc,dxc,ddxc = compliant trajectory to enforce desired impedance behaviour between the frames
@@ -25,7 +25,6 @@ l= 1;
 for l = 1:size(time,2)
     x_hat = vec8(DQ(xr_in)'*DQ(xd(l,:))); %pose displacement between desired and compliant frame
     y_hat = yr_in; %log mapping of pose displacement
-    dx_hat = vec8(DQ(dxr_in)'*DQ(xd(l,:)) + DQ(xr_in)'*DQ(dxd(l,:)));
     Q8 = getQ8(DQ(x_hat));
     dy_hat = dyr_in;
     
@@ -34,7 +33,7 @@ for l = 1:size(time,2)
         zeros(3,1), zeros(3,3), zeros(3,1), eye(3)];
     G = getG(DQ(x_hat));
     Glog = Ibar*G*Q8;
-    flog = (Glog)'*(psi_ext');
+    flog = (Glog)'*(psi_ext);
     
     %admittance equation
     ddy_hat = inv(Md)*(-Bd*dy_hat-Kd*y_hat-flog);
@@ -46,8 +45,7 @@ for l = 1:size(time,2)
     dx_hat = Q8*dy_hat;
     Q8_dot = getQ8_dot(DQ(x_hat),DQ(dx_hat));
     ddx_hat = Q8*ddy_hat + Q8_dot*dy_hat;
-    
-    
+   
     %retrieve compliant trajectory
     xr = hamiplus8(DQ(xd(l,:)))*DQ.C8*(x_hat);
     dxr = hamiplus8(DQ(dxd(l,:)))*DQ.C8*(x_hat) + hamiplus8(DQ(xd(l,:)))*DQ.C8*(dx_hat);

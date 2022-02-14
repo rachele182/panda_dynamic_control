@@ -41,7 +41,7 @@ franka = DQ_SerialManipulator(FEp_DH_matrix,'standard');
 
 %%Initial conditions
 % q_in = [ 1.1515    0.3950    0.2619   -1.5722   -0.0002    1.3958    0.0001]'; %rad
-q_in = [0;0;0;-pi/2;0;pi/2;0];
+q_in = [0 0 0 -1.5708 0 1.5708 0]'; %rad
 x_in = franka.fkm(q_in); 
 p0_in = vec4(x_in.translation);
 r0_in = vec4(P(x_in));
@@ -61,9 +61,8 @@ Md1 = 1.5*I;  %desired mass matrix
 Kd1 = 500*I;  %desired stiffness matrix 
 Bd1 = 2*sqrt(Kd1*Md1);  %desired damping matrix
 %utils
-z_table = 0.4; % m
+z_table = 0.35; % m
 k_table = 10000; %N/m
-
 
 
 disp('Loaded')

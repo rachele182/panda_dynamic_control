@@ -4,11 +4,11 @@
 %des trajectory
 % [xd,dxd,ddxd] = gen_traj(x_in,time);
 [xd,dxd,ddxd] = int_traj(x_in,time); 
-psi_ext = [0;0;-10;0;0;0]'; %need a row vector in here
+
+psi_ext = zeros(6,1)<
 
 %complian traj
-
-[xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md1,Kd1,Bd1); 
+[xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md1,Kd1,Bd1);
 
 
 %% PLOTS
@@ -27,20 +27,20 @@ end
 figure()
 tiledlayout(3,1) 
 nexttile
-plot(time, pos_d(:,2), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,2), 'Linewidth',2, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
-plot(time, pos_r(:,2), 'Linewidth',1.5, 'Color', 'b')
+plot(time, pos_r(:,2), 'Linewidth',1.5, 'Color', 'b','LineStyle','--')
 hold on
 grid on
 xlabel('time [s]')
 ylabel('x [m]')
 legend('des','comp')
 nexttile
-plot(time, pos_d(:,3), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,3), 'Linewidth',2, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
-plot(time, pos_r(:,3), 'Linewidth',1.5, 'Color', 'b')
+plot(time, pos_r(:,3), 'Linewidth',1.5, 'Color', 'b','LineStyle','--')
 hold on
 grid on
 xlabel('time [s]')
@@ -48,10 +48,10 @@ ylabel('y [m]')
 legend('des','comp')
 
 nexttile
-plot(time, pos_d(:,4), 'Linewidth',1.5, 'Color', '[0.9290, 0.6940, 0.1250]')
+plot(time, pos_d(:,4), 'Linewidth',2, 'Color', '[0.9290, 0.6940, 0.1250]')
 hold on 
 grid on
-plot(time, pos_r(:,4), 'Linewidth',1.5, 'Color', 'b')
+plot(time, pos_r(:,4), 'Linewidth',1.5, 'Color', 'b','LineStyle','--')
 hold on
 grid on
 xlabel('time [s]')

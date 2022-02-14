@@ -1,12 +1,11 @@
 %% Test simple interaction task
 
-%% TEST MOTION CONTROL TASK SPACE TRAJECTORY
 %%Addpath 
 include_namespace_dq;
 
-%% intiialize
-wrench_ext = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
-psi_ext = [zeros(size(time,2),6)];
+% %% intiialize
+w_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
+psi_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (referernce_frame)
 
 %% Desired trajectory
 cdt = 0.01; %sampling time (10ms)
@@ -84,21 +83,26 @@ if (clientID>-1)
         
         % Current EE configuration
         x = vec8(fep.fkm(qm)); 
-        
-        % Model forces
-        x_pos = vec4(DQ(x).translation); %crrent ee position
-        r0 = DQ(x).P; %initial EE rotation
+        x_pos = vec4(DQ(x).translation); %current ee position
         z = [x_pos(2); x_pos(3); x_pos(4)];
-        
+ 
+        % Model forces
 
         if z(3) < z_table
-            f_ext = -k_table*(z(3) - z_table);
+            f_ext = -k_table*(z(3) - z_table); %elastic reaction
         else
             f_ext = 0;
         end
 
-        wrench_ext(i,:) = [0;0;f_ext;0;0;0];
-        psi_ext(i,:) = vec6((r0)'*DQ(wrench_ext(i,:))*(r0)); %external wrench (compliant frame)
+        wrench_ext = [0;0;f_ext;0;0;0];
+        psi_ext = vec6(r0_in'*DQ(wrench_ext)*r0_in); %external wrench (compliant frame)
+        
+        w_ext_data(i,:) = wrench_ext; 
+        psi_ext_data(i,:) = psi_ext; 
+    
+        %admittance loop
+        [xc,dxc,ddxc] = adm_contr_online(xd1(i,:),dxd(i,:),ddxd(i,:),psi_ext,xr,dxr,Md,Kd,Bd);
+        
 
 
         % Pose Jacobian
@@ -118,8 +122,7 @@ if (clientID>-1)
         Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
         
-
-        [xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext(i,:),time,x_in,dx_in,Md1,Kd1,Bd1); %(compliant trajectory) 
+        
 
         % Compliant trajectory position,velocity acceleration
         xd_des = xd(i,:)';
@@ -132,7 +135,7 @@ if (clientID>-1)
         ddxd1_str = ddxd1(i,:);
         
         %Ext force
-        fext = psi_ext(i,1:3)';
+        fext = w_ext_data(i,1:3)';
        
         % Printing the time step of the simulation and the error
         % -----------------------
@@ -175,8 +178,8 @@ if (clientID>-1)
          P = eye(7) - pinv(N)*N;
          D_joints = eye(7)*2;
          tau_null = P*(-D_joints*qm_dot);
-         tau_ext = Jg'*wrench_ext(i,:)';
-         tau = tau + tau_null + 0*tau_ext;
+        
+         tau = tau + tau_null;
          
          %Sent torque commands
          tau_send = tau;
