@@ -34,7 +34,7 @@ for l = 1:size(time,2)
         zeros(3,1), zeros(3,3), zeros(3,1), eye(3)];
     G = getG(DQ(x_hat));
     Glog = Ibar*G*Q8;
-    flog = (Glog)'*(psi_ext);
+    flog = (Glog)'*(psi_ext');
     
     %admittance equation
     ddy_hat = inv(Md)*(-Bd*dy_hat-Kd*y_hat-flog);

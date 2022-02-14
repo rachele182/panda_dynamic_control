@@ -1,3 +1,5 @@
+%% Test simple interaction task
+
 %% TEST MOTION CONTROL TASK SPACE TRAJECTORY
 %%Addpath 
 include_namespace_dq;
@@ -5,11 +7,7 @@ include_namespace_dq;
 %% Desired trajectory
 cdt = 0.01; %sampling time (10ms)
 
-[xd1, dxd1, ddxd1] = gen_traj(x_in,time); %minimum jerk trajectory (desired)
-%[xd1, dxd1, ddxd1] = circ_traj(x_in,time);
-
-psi_ext = zeros(1,6); %row vector!!
-[xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext,time,x_in,dx_in,Md,Kd,Bd); %(compliant trajectory) 
+[xd1, dxd1, ddxd1] = int_traj(x_in,time); %minimum jerk trajectory (desired)
 
 %% Connect to VREP
 
@@ -58,7 +56,7 @@ if (clientID>-1)
     
     % Saving data to analyze later
     sres.xd = [];  sres.xd_dot = [];  sres.xd_ddot = [];
-    sres.x = []; sres.xref = [];
+    sres.x = []; sres.xref = []; sres.f_ext = []; 
     %---------------------------------------    
     % time
     inittime = sim.simxGetLastCmdTime(clientID);
@@ -83,11 +81,30 @@ if (clientID>-1)
         % Current EE configuration
         x = vec8(fep.fkm(qm)); 
         
+        % Model forces
+        x_pos = vec4(DQ(x).translation); %crrent ee position
+        r0 = DQ(x).P; %initial EE rotation
+        z = [x_pos(2); x_pos(3); x_pos(4)];
+        
+        wrench_ext = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
+        psi_ext = [zeros(size(time,2),6)];
+
+        if z(3) < z_table
+            f_ext = -k_table*(z(3) - z_table);
+        else
+            f_ext = 0;
+        end
+
+        wrench_ext(i,:) = [0;0;f_ext;0;0;0];
+        psi_ext(i,:) = vec6((r0)'*DQ(wrench_ext(i,:))*(r0)); %external wrench (compliant frame)
+
+
         % Pose Jacobian
         Jp = fep.pose_jacobian(qm);
         
         % Geometric Jacobian
         J = geomJ(fep,qm);
+        Jg = [Jg(4:6,:);Jg(1:3,:)]; %[translation-rotation]
         
         % Current joint derivative (Euler 1st order derivative)
         qm_dot = (qm-qmOld)/cdt; %computed as vrep function 
@@ -99,6 +116,9 @@ if (clientID>-1)
         Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
         
+
+        [xd,dxd,ddxd] = adm_contr(xd1,dxd1,ddxd1,psi_ext(i,:),time,x_in,dx_in,Md1,Kd1,Bd1); %(compliant trajectory) 
+
         % Compliant trajectory position,velocity acceleration
         xd_des = xd(i,:)';
         dxd_des = dxd(i,:)';
@@ -108,7 +128,9 @@ if (clientID>-1)
         xd1_str = xd1(i,:);
         dx1_str = dxd1(i,:);
         ddxd1_str = ddxd1(i,:);
-       
+        
+        %Ext force
+        fext = psi_ext(i,1:3)';
        
         % Printing the time step of the simulation and the error
         % -----------------------
@@ -122,6 +144,7 @@ if (clientID>-1)
         sres.xd(:,i) = vec4(DQ(xd_des).translation);  sres.xd_dot(:,i) = dxd_des;  sres.xd_ddot(:,i) = ddxd_des;
         sres.x(:,i) = vec4(DQ(x).translation); 
         sres.xref(:,i) = vec4(DQ(xd1_str).translation);
+        sres.fext(:,i) = fext; 
       
         % -----------------------        
         
@@ -150,7 +173,8 @@ if (clientID>-1)
          P = eye(7) - pinv(N)*N;
          D_joints = eye(7)*2;
          tau_null = P*(-D_joints*qm_dot);
-         tau = tau + tau_null;
+         tau_ext = Jg'*wrench_ext(i,:);
+         tau = tau + tau_null + tau_ext;
          
          %Sent torque commands
          tau_send = tau;
@@ -242,3 +266,11 @@ plot(tt,sres.x(4,:),'c','LineWidth',2);
 hold on,grid on
 plot(tt,sres.xref(4,:),'b','LineWidth',2)
 legend('zc','z','zd')
+
+%%Plot ext force
+figure()
+plot(tt,sres.f_ext(1,:),'LineWidth',2);
+hold on, grid on
+plot(tt,sres.f_ext(2,:),'LineWidth',2);
+hold on,grid on
+plot(tt,sres.f_ext(3,:),'LineWidth',2);

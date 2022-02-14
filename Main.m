@@ -5,8 +5,8 @@ warning off;
 clc;
 
 %% Addpath 
-% addpath /home/geriatronics/github/panda_dynamic_control/functions
-% addpath /home/geriatronics/github/panda_dynamic_control/Vrep_utils
+addpath /home/geriatronics/github/panda_dynamic_control/functions
+addpath /home/geriatronics/github/panda_dynamic_control/Vrep_utils
 
 addpath /home/rachele/github/panda_dynamic_control/functions
 addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
@@ -21,7 +21,7 @@ q_max = [ 2.8973    1.7628    2.8973  -0.0698    2.8973    3.7525    2.8973];
 C8 = diag([1, -1, -1, -1, 1, -1, -1, -1]);
 threshold = 1e-12; 
 cdt = 0.01; %sampling time
-time = 0:cdt:5; %simulation time
+time = 0:cdt:2; %simulation time
 tt = time; 
 
 %% Admittance controller
@@ -40,7 +40,8 @@ franka_dh_matrix = FEp_DH_matrix;
 franka = DQ_SerialManipulator(FEp_DH_matrix,'standard');
 
 %%Initial conditions
-q_in = [ 1.1515    0.3950    0.2619   -1.5722   -0.0002    1.3958    0.0001]'; %rad
+% q_in = [ 1.1515    0.3950    0.2619   -1.5722   -0.0002    1.3958    0.0001]'; %rad
+q_in = [0;0;0;-pi/2;0;pi/2;0];
 x_in = franka.fkm(q_in); 
 p0_in = vec4(x_in.translation);
 r0_in = vec4(P(x_in));
@@ -54,5 +55,15 @@ xd_in = x_in;
 e_in = vec8(DQ(xr_in)'*DQ(xd_in));
 yr_in = vec6(log(DQ(e_in)));
 dyr_in = [0 0 0 0 0 0]';
+
+%% Interaction task with table
+Md1 = 1.5*I;  %desired mass matrix
+Kd1 = 500*I;  %desired stiffness matrix 
+Bd1 = 300*I;  %desired damping matrix
+%utils
+z_table = 0.4; % m
+k_table = 10000; %N/m
+
+
 
 disp('Loaded')
