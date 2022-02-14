@@ -4,6 +4,10 @@
 %%Addpath 
 include_namespace_dq;
 
+%% intiialize
+wrench_ext = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
+psi_ext = [zeros(size(time,2),6)];
+
 %% Desired trajectory
 cdt = 0.01; %sampling time (10ms)
 
@@ -86,8 +90,6 @@ if (clientID>-1)
         r0 = DQ(x).P; %initial EE rotation
         z = [x_pos(2); x_pos(3); x_pos(4)];
         
-        wrench_ext = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
-        psi_ext = [zeros(size(time,2),6)];
 
         if z(3) < z_table
             f_ext = -k_table*(z(3) - z_table);
@@ -104,7 +106,7 @@ if (clientID>-1)
         
         % Geometric Jacobian
         J = geomJ(fep,qm);
-        Jg = [Jg(4:6,:);Jg(1:3,:)]; %[translation-rotation]
+        Jg = [J(4:6,:);J(1:3,:)]; %[translation-rotation]
         
         % Current joint derivative (Euler 1st order derivative)
         qm_dot = (qm-qmOld)/cdt; %computed as vrep function 
@@ -173,8 +175,8 @@ if (clientID>-1)
          P = eye(7) - pinv(N)*N;
          D_joints = eye(7)*2;
          tau_null = P*(-D_joints*qm_dot);
-         tau_ext = Jg'*wrench_ext(i,:);
-         tau = tau + tau_null + tau_ext;
+         tau_ext = Jg'*wrench_ext(i,:)';
+         tau = tau + tau_null + 0*tau_ext;
          
          %Sent torque commands
          tau_send = tau;

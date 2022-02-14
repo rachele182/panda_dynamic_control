@@ -8,8 +8,8 @@ clc;
 addpath /home/geriatronics/github/panda_dynamic_control/functions
 addpath /home/geriatronics/github/panda_dynamic_control/Vrep_utils
 
-addpath /home/rachele/github/panda_dynamic_control/functions
-addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
+% addpath /home/rachele/github/panda_dynamic_control/functions
+% addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
 
 disp('Loading parameters..')
 
@@ -59,7 +59,7 @@ dyr_in = [0 0 0 0 0 0]';
 %% Interaction task with table
 Md1 = 1.5*I;  %desired mass matrix
 Kd1 = 500*I;  %desired stiffness matrix 
-Bd1 = 300*I;  %desired damping matrix
+Bd1 = 2*sqrt(Kd1*Md1);  %desired damping matrix
 %utils
 z_table = 0.4; % m
 k_table = 10000; %N/m

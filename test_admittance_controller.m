@@ -4,11 +4,11 @@
 %des trajectory
 % [xd,dxd,ddxd] = gen_traj(x_in,time);
 [xd,dxd,ddxd] = int_traj(x_in,time); 
-psi_ext = [0;0;-5;0;0;0]'; %need a row vector in here
+psi_ext = [0;0;-10;0;0;0]'; %need a row vector in here
 
 %complian traj
 
-[xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md,Kd,Bd); 
+[xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md1,Kd1,Bd1); 
 
 
 %% PLOTS
