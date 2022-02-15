@@ -1,11 +1,14 @@
 %% Interaction task
 %% Desired trajectory
-function [xd,dxd,ddxd] = int_traj(x_in,time)
-%% Description: generates minimum jerk task-space trajectory
+function [xd,dxd,ddxd,int_data] = int_traj(x_in,time)
+%% Description: generates minimum jerk task-space trajectory for interaction task
+%% int = flag of interaction phase
 %%initialize
 xd = [zeros(size(time,2),8)];
 dxd = [zeros(size(time,2),8)];
 ddxd = [zeros(size(time,2),8)];
+int_data = [zeros(size(time,2),1)];
+int = 0; 
 
 %%retrive initial conditions
 p0 = vec4(x_in.translation);
@@ -23,16 +26,19 @@ for i = 1:size(time,2)
         pos_f = pos_i;
         tf = 0.5;
         t = time(i) - 0.5;
+        int = 1;
     elseif (time(i) >= 1 && time(i) < 1.5) %go up
         pos_i = [p0(2);p0(3);p0(4)-0.3];
         pos_f = pos_i + [0;0;0.3];
         tf = 0.5;
         t = time(i) - 1;
+        int = 0;
     else
         pos_i = [p0(2);p0(3);p0(4)];
         pos_f = pos_i;
         tf = 1000;
         t = time(i) - 1.5;
+        int = 0;
     end
 
     %% Minimum jerk interpolation
@@ -47,6 +53,7 @@ for i = 1:size(time,2)
     xd(i,:) = x_des;
     dxd(i,:) = dx_des;
     ddxd(i,:) = ddx_des;
+    int_data(i,:) = int; 
     i = i+1;
 end
 

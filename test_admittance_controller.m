@@ -1,12 +1,12 @@
-%% generate trajectory task space
+% generate trajectory task space
 
-%% COMPARE (FREE MOTION)
+% COMPARE (FREE MOTION)
 %des trajectory
 % [xd,dxd,ddxd] = gen_traj(x_in,time);
-[xd,dxd,ddxd] = int_traj(x_in,time); 
+[xd,dxd,ddxd,int_data] = int_traj(x_in,time); 
 % psi_ext = [0;0;+50;0;0;0]'; 
 % [xc,dxc,ddxc] = adm_contr(xd,dxd,ddxd,psi_ext,time,x_in,dx_in,Md,Kd,Bd);
-
+% 
 % xc_data = zeros(size(time,2),8);
 % dxc_data = zeros(size(time,2),8);
 % ddxc_data = zeros(size(time,2),8);
@@ -108,7 +108,7 @@ for j = 1:size(time,2)
         t_curr = time(j);
         t_prec = 0; 
     end
-    wrench_ext = ext_forces(xd(j,:),fi,t_curr,t_prec);
+    wrench_ext = ext_forces(int_data(j,:),xd(j,:),fi,t_curr,t_prec);
     wrench_ext_data(j,:) = wrench_ext;
     j = j+1;
 end

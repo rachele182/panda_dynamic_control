@@ -10,13 +10,13 @@ yr_data = zeros(size(time,2),6);
 dyr_data =  zeros(size(time,2),6);
 
 %%wrench vector
-w_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
-psi_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (referernce_frame)
+w_ext_data = zeros(size(time,2),6); %external wrench on EE (world_frame)
+psi_ext_data = zeros(size(time,2),6); %external wrench on EE (complinat_reference_frame)
 
 %% Desired trajectory
 
 cdt = 0.01; %sampling time (10ms)
-[xd1, dxd1, ddxd1] = int_traj(x_in,time); %minimum jerk trajectory (desired)
+[xd1, dxd1, ddxd1,int_data] = int_traj(x_in,time); %minimum jerk trajectory (desired)
 
 %% Connect to VREP
 
@@ -91,26 +91,31 @@ if (clientID>-1)
         % Current EE configuration
         x = vec8(fep.fkm(qm)); 
         r0 = DQ(x).P; 
-
-        % Model forces
-        wrench_ext = ext_forces(x,z_table,time); 
-        psi_ext = vec6(r0'*DQ(wrench_ext)*r0); %external wrench (compliant frame)
-        
-        w_ext_data(i,:) = wrench_ext; 
-        psi_ext_data(i,:) = psi_ext; 
     
         %% admittance loop
         if i~=1
             xr = xc_data(i-1,:)';
             yr_in = yr_data(i-1,:)';
             dyr_in = dyr_data(i-1,:)';
+            fi = w_ext_data(i-1,3)';
+            t_curr = time(i);
+            t_prec = time(i-1);
         else
             xr = vec8(x_in);
             e_in = vec8(DQ(xr)'*DQ(xd1(1,:)));
             yr_in = vec6(log(DQ(e_in)));
             dyr_in = zeros(6,1);
+            fi = 0; 
+            t_curr = time(i);
+            t_prec = 0;
         end
 
+        % Model forces
+        wrench_ext = ext_forces(int_data(i,:),x,fi,t_curr,t_prec);
+        w_ext_data(i,:) = wrench_ext;
+        psi_ext = vec6(r0'*DQ(wrench_ext)*r0); %external wrench (compliant frame)
+        psi_ext_data(i,:) = psi_ext; 
+        
         [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
         xc_data(i,:) = xd; 
