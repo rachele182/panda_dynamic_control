@@ -84,25 +84,16 @@ if (clientID>-1)
             [~,qmread(j)]  = sim.simxGetJointPosition(clientID,joint_handles(j),sim.simx_opmode_blocking);
         end      
         qmOld = qm;
+
         % Current joint configuration 
         qm = double([qmread])';
         
         % Current EE configuration
-
         x = vec8(fep.fkm(qm)); 
-        x_pos = vec4(DQ(x).translation); %current ee position
-        r0 = DQ(x_in).P; %current ee rotation
-        z = [x_pos(2); x_pos(3); x_pos(4)];
- 
+        r0 = DQ(x).P; 
+
         % Model forces
-
-        if z(3) < z_table
-            f_ext = -k_table*(z(3) - z_table); %table reaction
-        else
-            f_ext = 0;
-        end
-
-        wrench_ext = [0;0;f_ext;0;0;0];
+        wrench_ext = ext_forces(x,z_table,time); 
         psi_ext = vec6(r0'*DQ(wrench_ext)*r0); %external wrench (compliant frame)
         
         w_ext_data(i,:) = wrench_ext; 
@@ -190,7 +181,7 @@ if (clientID>-1)
          e = xd_des - x;
          de = dxd_des - dx;
          ei = de*cdt + e;
-         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + 0*ki*eye(8)*ei);
+         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
          tau = M*y + c + g; 
          
          N = haminus8(DQ(xd_des))*DQ.C8*Jp;
@@ -296,8 +287,8 @@ legend('zc','z','zd')
 
 %%Plot ext force
 figure()
-plot(tt,sres.f_ext(1,:),'LineWidth',2);
+plot(tt,sres.fext(1,:),'LineWidth',2);
 hold on, grid on
-plot(tt,sres.f_ext(2,:),'LineWidth',2);
+plot(tt,sres.fext(2,:),'LineWidth',2);
 hold on,grid on
-plot(tt,sres.f_ext(3,:),'LineWidth',2);
+plot(tt,sres.fext(3,:),'LineWidth',2);

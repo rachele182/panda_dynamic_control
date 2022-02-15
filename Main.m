@@ -28,7 +28,7 @@ tt = time;
 I = eye(6);
 Md = 1.5*I;  %desired mass matrix
 Kd = 1000*I; %desired stiffness matrix 
-Bd = 2*sqrt(1000*1.5);  %desired damping matrix
+Bd = 2*sqrt(1000*1.5)*I;  %desired damping matrix
 
 %% Build robot
 FEp_DH_theta = [0, 0, 0, 0, 0, 0, 0];
@@ -48,18 +48,19 @@ r0_in = vec4(P(x_in));
 dx_in = zeros(8,1);
 
 %Initial cond admittance controller
-%trajectory circ y-z
-% xd_in = vec8(r0_in + 0.5*DQ.E*DQ([0;p0_in(2);p0_in(3)+0.125;p0_in(4)])*DQ(r0_in));
-xr_in = x_in; 
-xd_in = x_in; 
-e_in = vec8(DQ(xr_in)'*DQ(xd_in));
-yr_in = vec6(log(DQ(e_in)));
-dyr_in = [0 0 0 0 0 0]';
+% %trajectory circ y-z
+% % xd_in = vec8(r0_in + 0.5*DQ.E*DQ([0;p0_in(2);p0_in(3)+0.125;p0_in(4)])*DQ(r0_in));
+% xr_in = x_in; 
+% xd_in = x_in; 
+% e_in = vec8(DQ(xr_in)'*DQ(xd_in));
+% yr_in = vec6(log(DQ(e_in)));
+% dyr_in = [0 0 0 0 0 0]';
 
 %% Interaction task with table
 Md1 = 1.5*I;  %desired mass matrix
 Kd1 = 500*I;  %desired stiffness matrix 
 Bd1 = 2*sqrt(Kd1*Md1);  %desired damping matrix
+
 %utils
 z_table = 0.35; % m
 k_table = 10000; %N/m
