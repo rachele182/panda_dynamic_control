@@ -1,15 +1,21 @@
 %% Test simple interaction task
-
 %%Addpath 
 include_namespace_dq;
 
-% %% intiialize
+%% intialize variables
+xc_data = zeros(size(time,2),8);
+dxc_data = zeros(size(time,2),8);
+ddxc_data = zeros(size(time,2),8);
+yr_data = zeros(size(time,2),6);
+dyr_data =  zeros(size(time,2),6);
+
+%%wrench vector
 w_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (world_frame)
 psi_ext_data = [zeros(size(time,2),6)]; %external wrench on EE (referernce_frame)
 
 %% Desired trajectory
-cdt = 0.01; %sampling time (10ms)
 
+cdt = 0.01; %sampling time (10ms)
 [xd1, dxd1, ddxd1] = int_traj(x_in,time); %minimum jerk trajectory (desired)
 
 %% Connect to VREP
@@ -82,27 +88,45 @@ if (clientID>-1)
         qm = double([qmread])';
         
         % Current EE configuration
+
         x = vec8(fep.fkm(qm)); 
         x_pos = vec4(DQ(x).translation); %current ee position
+        r0 = DQ(x_in).P; %current ee rotation
         z = [x_pos(2); x_pos(3); x_pos(4)];
  
         % Model forces
 
         if z(3) < z_table
-            f_ext = -k_table*(z(3) - z_table); %elastic reaction
+            f_ext = -k_table*(z(3) - z_table); %table reaction
         else
             f_ext = 0;
         end
 
         wrench_ext = [0;0;f_ext;0;0;0];
-        psi_ext = vec6(r0_in'*DQ(wrench_ext)*r0_in); %external wrench (compliant frame)
+        psi_ext = vec6(r0'*DQ(wrench_ext)*r0); %external wrench (compliant frame)
         
         w_ext_data(i,:) = wrench_ext; 
         psi_ext_data(i,:) = psi_ext; 
     
-        %admittance loop
-        [xc,dxc,ddxc] = adm_contr_online(xd1(i,:),dxd(i,:),ddxd(i,:),psi_ext,xr,dxr,Md,Kd,Bd);
+        %% admittance loop
+        if i~=1
+            xr = xc_data(i-1,:)';
+            yr_in = yr_data(i-1,:)';
+            dyr_in = dyr_data(i-1,:)';
+        else
+            xr = vec8(x_in);
+            e_in = vec8(DQ(xr)'*DQ(xd1(1,:)));
+            yr_in = vec6(log(DQ(e_in)));
+            dyr_in = zeros(6,1);
+        end
+
+        [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
+        xc_data(i,:) = xd; 
+        dxc_data(i,:) = dxd;
+        ddxc_data(i,:) = ddxd;
+        yr_data(i,:) = yr; 
+        dyr_data(i,:) = dyr; 
 
 
         % Pose Jacobian
@@ -121,13 +145,11 @@ if (clientID>-1)
         % Pose Jacobian first-time derivative 
         Jp_dot = fep.pose_jacobian_derivative(qm,qm_dot);
         %---------------------------------------    
-        
-        
 
         % Compliant trajectory position,velocity acceleration
-        xd_des = xd(i,:)';
-        dxd_des = dxd(i,:)';
-        ddxd_des = ddxd(i,:)'; 
+        xd_des = xc_data(i,:)';
+        dxd_des = dxc_data(i,:)';
+        ddxd_des = ddxc_data(i,:)'; 
         
         %Desired trajectory
         xd1_str = xd1(i,:);
@@ -159,7 +181,7 @@ if (clientID>-1)
         M = get_MassMatrix(qm); 
         tauf = get_FrictionTorque(qm_dot);                
 
-%%       Task-space inverse dynamics with fb linearization
+    %%  Task-space inverse dynamics with fb linearization
          kp = 1000;
          kd = 100;
          ki = 500; %integral gain 

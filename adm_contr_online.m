@@ -1,4 +1,4 @@
-function [xc,dxc,ddxc] = adm_contr_online(xd,dxd,ddxd,psi_ext,xr,dxr,Md,Kd,Bd)
+function [xc,dxc,ddxc,yr,dyr] = adm_contr_online(xd,dxd,ddxd,psi_ext,xr,yr,dyr,Md,Kd,Bd,time)
 
 %% Description: admittance controller to enforce an apparent impedance behaviour at task-space
 %%inputs: xd,dxd,ddxd = desired reference trajectory
@@ -9,27 +9,27 @@ function [xc,dxc,ddxc] = adm_contr_online(xd,dxd,ddxd,psi_ext,xr,dxr,Md,Kd,Bd)
 
 
 %Initialize
-xr_in = xr;
-e_in = vec8(DQ(xr_in)'*DQ(xd));
-yr_in = vec6(log(DQ(e_in)));
-dyr_in = dxr;
+cdt = time(2) - time(1); %sampling time 
 
-x_hat = vec8(DQ(xr_in)'*DQ(xd)); %pose displacement between desired and compliant frame
-y_hat = yr_in; %log mapping of pose displacement
-Q8 = getQ8(DQ(x_hat));
-dy_hat = dyr_in;
+x_hat = vec8(DQ(xr)'*DQ(xd)); %pose displacement between desired and compliant frame
+y_hat = yr; %log mapping of pose displacement
+dy_hat = dyr;
 
 %Mapping external wrench to be consisten with DQ log definition
+Q8 = getQ8(DQ(x_hat));
 Ibar = [zeros(3,1), eye(3), zeros(3,1), zeros(3,3);...
     zeros(3,1), zeros(3,3), zeros(3,1), eye(3)];
 G = getG(DQ(x_hat));
 Glog = Ibar*G*Q8;
-flog = (Glog)'*(psi_ext(l,:)');
+flog = (Glog)'*(psi_ext');
 
 %admittance equation
 ddy_hat = inv(Md)*(-Bd*dy_hat-Kd*y_hat-flog);
 dy_hat  = ddy_hat*cdt + dy_hat;
 y_hat = dy_hat*cdt + y_hat;
+
+yr = y_hat;
+dyr = dy_hat;
 
 x_hat = vec8(exp(DQ(y_hat)));
 Q8 = getQ8(DQ(x_hat));
