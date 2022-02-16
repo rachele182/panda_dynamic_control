@@ -90,7 +90,7 @@ if (clientID>-1)
         
         % Current EE configuration
         x = vec8(fep.fkm(qm)); 
-        r0 = DQ(x).P; 
+        r0 = vec4(DQ(x).P); 
     
         %% admittance loop
         if i~=1
@@ -110,12 +110,15 @@ if (clientID>-1)
             t_prec = 0;
         end
 
-        % Model forces
+        %% Model forces
         wrench_ext = ext_forces(int_data(i,:),x,fi,t_curr,t_prec);
         w_ext_data(i,:) = wrench_ext;
-        psi_ext = vec6(r0'*DQ(wrench_ext)*r0); %external wrench (compliant frame)
+       
+        w_ext_data(i,:) = wrench_ext;
+        psi_ext = vec6(DQ(r0)'*DQ(wrench_ext)*DQ(r0)); %external wrench (compliant frame)
         psi_ext_data(i,:) = psi_ext; 
-        
+%       psi_ext = [0;0;5;0;0;0];
+         
         [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
         xc_data(i,:) = xd; 
@@ -182,6 +185,7 @@ if (clientID>-1)
          kd = 100;
          ki = 500; %integral gain 
          
+
          %% Define error (task-space)
          e = xd_des - x;
          de = dxd_des - dx;

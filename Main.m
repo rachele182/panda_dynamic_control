@@ -8,8 +8,8 @@ clc;
 addpath /home/geriatronics/github/panda_dynamic_control/functions
 addpath /home/geriatronics/github/panda_dynamic_control/Vrep_utils
 
-% addpath /home/rachele/github/panda_dynamic_control/functions
-% addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
+addpath /home/rachele/github/panda_dynamic_control/functions
+addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
 
 disp('Loading parameters..')
 
@@ -47,14 +47,6 @@ p0_in = vec4(x_in.translation);
 r0_in = vec4(P(x_in));
 dx_in = zeros(8,1);
 
-%Initial cond admittance controller
-% %trajectory circ y-z
-% % xd_in = vec8(r0_in + 0.5*DQ.E*DQ([0;p0_in(2);p0_in(3)+0.125;p0_in(4)])*DQ(r0_in));
-% xr_in = x_in; 
-% xd_in = x_in; 
-% e_in = vec8(DQ(xr_in)'*DQ(xd_in));
-% yr_in = vec6(log(DQ(e_in)));
-% dyr_in = [0 0 0 0 0 0]';
 
 %% Interaction task with table
 Md1 = 1.5*I;  %desired mass matrix

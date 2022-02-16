@@ -5,7 +5,7 @@ function [xc,dxc,ddxc,yr,dyr] = adm_contr_online(xd,dxd,ddxd,psi_ext,xr,yr,dyr,M
 %         psi_ext = external wrench on EE (with respect to compliant reference frame)
 %         time = simulation time
 %         Md,Kd,Bd = impedance matrices
-%outpus:  xc,dxc,ddxc = compliant trajectory to enforce desired impedance behaviour between the frames
+%%outpus: xc,dxc,ddxc = compliant trajectory to enforce desired impedance behaviour between the frames
 
 
 %Initialize
