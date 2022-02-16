@@ -5,28 +5,34 @@ function wrench_ext = ext_forces(int,x,fi,t_curr,t_prec)
 % Inputs: x = current EE pose;
 %         pe = contact position;
 
-k_table = 10000; %environment stiffness
+k_table = 1000*5; %environment stiffness
 pc = 0.35; %contact position (z axis)
 cdt = 0.01; %sampling time
 
 x_pos = vec4(DQ(x).translation); %EE position
 z = [x_pos(2); x_pos(3); x_pos(4)];
-F_ext = 0;
+% F_ext = 0;
 
-%%To do: check model of the forces, after detection of interaction (you can
-%%store in a flag), model an ext force that decreases in the time of
-%%interaction.. 
+    if z(3) < pc 
+        F_ext = -k_table*(z(3) - pc); %elastic reaction
+%         fz = -k_table*(z(3) - pc); %elastic reaction
+%         F_ext = fi + ((fz-fi)/cdt)*(t_curr - t_prec);
+%     else
+%         if int == 1
 
-if int == 1
-    if z(3) < pc
-        fz = -k_table*(z(3) - pc); %elastic reaction
-        F_ext = fi + ((fz-fi)/cdt)*(t_curr - t_prec);
+%     elseif z(3) > pc+0.002
+%         if(fi~=0)
+%             F_ext = 0.5*fi;
+%         else
+%             F_ext = 0; 
+%         end
     else
-        F_ext = fi + (-fi/(cdt*5))*(t_curr - t_prec); 
+        F_ext = 0;
+        
     end
-else
-   F_ext = 0;
-end
+% else
+%    F_ext = 0;
+% end
 
 wrench_ext = [0;0;F_ext;0;0;0];
 

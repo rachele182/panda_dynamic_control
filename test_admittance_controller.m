@@ -10,18 +10,20 @@ wrench_ext_data = zeros(size(time,2),6);
 
 j = 1;
 for j = 1:size(time,2)
-    if j~=1
-        fi = wrench_ext_data(j-1,3)';
-        t_curr = time(j);
-        t_prec = time(j-1);
-    else
-        fi = 0;
-        t_curr = time(j);
-        t_prec = 0; 
-    end
-    wrench_ext = ext_forces(int_data(j,:),xd(j,:),fi,t_curr,t_prec);
-    wrench_ext_data(j,:) = wrench_ext;
-    j = j+1;
+%     if j~=1
+%         fi = wrench_ext_data(j-1,3)';
+%         t_curr = time(j);
+%         t_prec = time(j-1);
+%     else
+%         fi = 0;
+%         t_curr = time(j);
+%         t_prec = 0; 
+%     end
+%     wrench_ext = ext_forces(int_data(j,:),xd(j,:),fi,t_curr,t_prec);
+%     wrench_ext_data(j,:) = wrench_ext;
+%     j = j+1;
+% end
+wrench_ext_data(j,:) = [0;0;-10;0;0;0];
 end
 
 figure()
@@ -50,7 +52,7 @@ for j = 1:size(time,2)
     end
 
     %compliant traj
-    [xc,dxc,ddxc,yr,dyr] = adm_contr_online(xd(j,:),dxd(j,:),ddxd(j,:),wrench_ext_data(j,:),xr,yr_in,dyr_in,Md,Kd,Bd,time);
+    [xc,dxc,ddxc,yr,dyr] = adm_contr_online(xd(j,:),dxd(j,:),ddxd(j,:),wrench_ext_data(j,:),xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
 
     xc_data(j,:) = xc; 
     dxc_data(j,:) = dxc;

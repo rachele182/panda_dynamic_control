@@ -17,27 +17,27 @@ pos_i = [p0(2);p0(3);p0(4)];
 i = 1;  
 
 for i = 1:size(time,2)
-    if (time(i) >=0 && time(i) < 0.5) %go down
+    if (time(i) >=0 && time(i) < 1) %go down
         pos_f = pos_i + [0;0;-0.3];
-        tf = 0.5;
+        tf = 1;
         t = time(i);
-    elseif (time(i) >=0.5 && time(i) < 1) %pause
+    elseif (time(i) >=1 && time(i) < 2) %pause
         pos_i = [p0(2);p0(3);p0(4)-0.3];
         pos_f = pos_i;
-        tf = 0.5;
-        t = time(i) - 0.5;
+        tf = 1;
+        t = time(i) - 1;
         int = 1;
-    elseif (time(i) >= 1 && time(i) < 1.5) %go up
+    elseif (time(i) >= 2 && time(i) < 3) %go up
         pos_i = [p0(2);p0(3);p0(4)-0.3];
         pos_f = pos_i + [0;0;0.3];
-        tf = 0.5;
-        t = time(i) - 1;
+        tf = 1;
+        t = time(i) - 2;
         int = 0;
     else
         pos_i = [p0(2);p0(3);p0(4)];
         pos_f = pos_i;
         tf = 1000;
-        t = time(i) - 1.5;
+        t = time(i) - 3;
         int = 0;
     end
 

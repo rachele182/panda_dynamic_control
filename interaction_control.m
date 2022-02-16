@@ -110,14 +110,14 @@ if (clientID>-1)
             t_prec = 0;
         end
 
-        %% Model forces
+        %% Model ext forces
         wrench_ext = ext_forces(int_data(i,:),x,fi,t_curr,t_prec);
         w_ext_data(i,:) = wrench_ext;
        
         w_ext_data(i,:) = wrench_ext;
         psi_ext = vec6(DQ(r0)'*DQ(wrench_ext)*DQ(r0)); %external wrench (compliant frame)
         psi_ext_data(i,:) = psi_ext; 
-%       psi_ext = [0;0;5;0;0;0];
+%         psi_ext = [0;0;-5;0;0;0];
          
         [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
@@ -181,8 +181,8 @@ if (clientID>-1)
         tauf = get_FrictionTorque(qm_dot);                
 
     %%  Task-space inverse dynamics with fb linearization
-         kp = 1000;
-         kd = 100;
+         kp = 1000*0.5;
+         kd = 100*0.5;
          ki = 500; %integral gain 
          
 
@@ -190,7 +190,7 @@ if (clientID>-1)
          e = xd_des - x;
          de = dxd_des - dx;
          ei = de*cdt + e;
-         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + ki*eye(8)*ei);
+         y = pinv(Jp)*(ddxd_des - Jp_dot*qm_dot  + kp*eye(8)*e + kd*eye(8)*de + 0*ki*eye(8)*ei);
          tau = M*y + c + g; 
          
          N = haminus8(DQ(xd_des))*DQ.C8*Jp;
@@ -200,7 +200,6 @@ if (clientID>-1)
          P = eye(7) - pinv(N)*N;
          D_joints = eye(7)*2;
          tau_null = P*(-D_joints*qm_dot);
-        
          tau = tau + tau_null;
          
          %Sent torque commands
