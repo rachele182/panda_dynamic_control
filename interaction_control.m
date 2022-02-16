@@ -97,27 +97,21 @@ if (clientID>-1)
             xr = xc_data(i-1,:)';
             yr_in = yr_data(i-1,:)';
             dyr_in = dyr_data(i-1,:)';
-            fi = w_ext_data(i-1,3)';
-            t_curr = time(i);
-            t_prec = time(i-1);
         else
             xr = vec8(x_in);
             e_in = vec8(DQ(xr)'*DQ(xd1(1,:)));
             yr_in = vec6(log(DQ(e_in)));
             dyr_in = zeros(6,1);
-            fi = 0; 
-            t_curr = time(i);
-            t_prec = 0;
         end
 
         %% Model ext forces
-        wrench_ext = ext_forces(int_data(i,:),x,fi,t_curr,t_prec);
+        wrench_ext = ext_forces(x);
         w_ext_data(i,:) = wrench_ext;
        
         w_ext_data(i,:) = wrench_ext;
         psi_ext = vec6(DQ(r0)'*DQ(wrench_ext)*DQ(r0)); %external wrench (compliant frame)
         psi_ext_data(i,:) = psi_ext; 
-%         psi_ext = [0;0;-5;0;0;0];
+        %psi_ext = [0;0;-5;0;0;0];
          
         [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
