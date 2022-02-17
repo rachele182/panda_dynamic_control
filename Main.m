@@ -19,7 +19,7 @@ q_max = [ 2.8973    1.7628    2.8973  -0.0698    2.8973    3.7525    2.8973];
 
 %% Constants
 cdt = 0.01; %sampling time
-time = 0:cdt:3.5; %simulation time
+time = 0:cdt:2.5; %simulation time
 tt = time; 
 
 %% Build robot
@@ -44,6 +44,7 @@ I = eye(6);
 Md1 = 1.5*I;  %desired mass matrix
 Kd1 = 300*I;  %desired stiffness matrix 
 Bd1 = 4*sqrt(4*Kd1*Md1);  %desired damping matrix
+
 
 %utils
 z_table = 0.35; % m

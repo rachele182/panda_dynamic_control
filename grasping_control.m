@@ -1,4 +1,4 @@
-%% Test simple interaction task
+%% Test grasping task
 %%Addpath 
 include_namespace_dq;
 
@@ -17,7 +17,7 @@ psi_ext_data = zeros(size(time,2),6); %external wrench on EE (complinat_referenc
 %% Desired trajectory
 
 cdt = 0.01; %sampling time (10ms)
-[xd1, dxd1, ddxd1] = int_traj(x_in,time); %minimum jerk trajectory (desired)
+[xd1, dxd1, ddxd1] = grasp_traj(x_in,time); %minimum jerk trajectory (desired)
 
 %% Connect to VREP
 
@@ -107,7 +107,7 @@ if (clientID>-1)
         end
 
         %% Model ext forces
-        wrench_ext = ext_forces(x);
+        wrench_ext = fext_grasp(x);
         w_ext_data(i,:) = wrench_ext;
        
         w_ext_data(i,:) = wrench_ext;

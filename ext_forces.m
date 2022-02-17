@@ -3,11 +3,10 @@ function wrench_ext = ext_forces(x)
 %% Assumptions: elastic reaction of the environment; negligible external torques
 % Output: wrench_ext = vector 6x1 representing the external wrench on EE (world frame)
 % Inputs: x = current EE pose;
-%         pe = contact position;
+
 
 k_table = 5000; %N/m, environment stiffness
 pc = 0.35; %contact position (z axis)
-cdt = 0.01; %sampling time
 
 x_pos = vec4(DQ(x).translation); %EE position
 z = [x_pos(2); x_pos(3); x_pos(4)];
