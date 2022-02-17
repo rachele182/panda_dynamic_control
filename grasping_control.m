@@ -17,7 +17,7 @@ psi_ext_data = zeros(size(time,2),6); %external wrench on EE (complinat_referenc
 %% Desired trajectory
 
 cdt = 0.01; %sampling time (10ms)
-[xd1, dxd1, ddxd1] = grasp_traj(x_in,time); %minimum jerk trajectory (desired)
+[xd1, dxd1, ddxd1,grasp_data] = grasp_traj(x_in,time); %minimum jerk trajectory (desired)
 
 %% Connect to VREP
 
@@ -107,13 +107,13 @@ if (clientID>-1)
         end
 
         %% Model ext forces
-        wrench_ext = fext_grasp(x);
+        grasp = grasp_data(i,:); 
+
+        wrench_ext = fext_grasp(x,grasp);
         w_ext_data(i,:) = wrench_ext;
-       
-        w_ext_data(i,:) = wrench_ext;
+  
         psi_ext = vec6(DQ(r0)'*DQ(wrench_ext)*DQ(r0)); %external wrench (compliant frame)
         psi_ext_data(i,:) = psi_ext; 
-        %psi_ext = [0;0;-5;0;0;0];
          
         [xd,dxd,ddxd,yr,dyr] = adm_contr_online(xd1(i,:),dxd1(i,:),ddxd1(i,:),psi_ext',xr,yr_in,dyr_in,Md1,Kd1,Bd1,time);
         
@@ -265,6 +265,8 @@ plot(tt,sres.tau_send(7,:),'y--','LineWidth',3);
 hold on, grid on
 plot(tt,sres.tau_read(:,7),'y','LineWidth',2);
 legend('tsend','tread'); 
+xlabel('time [s]')
+ylabel('torque [Nm]')
 
 %%Plot ee-position
 figure();
@@ -288,6 +290,8 @@ plot(tt,sres.x(4,:),'c','LineWidth',2);
 hold on,grid on
 plot(tt,sres.xref(4,:),'b','LineWidth',2)
 legend('zc','z','zd')
+xlabel('time [s]')
+ylabel('Position [m]')
 
 %%Plot ext force
 figure()
@@ -296,3 +300,5 @@ hold on, grid on
 plot(tt,sres.fext(2,:),'LineWidth',2);
 hold on,grid on
 plot(tt,sres.fext(3,:),'LineWidth',2);
+xlabel('time [s]')
+ylabel('F [N]')

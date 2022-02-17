@@ -1,6 +1,6 @@
 %% Grasping task
 %% Desired trajectory
-function [xd,dxd,ddxd,grasp] = grasp_traj(x_in,time)
+function [xd,dxd,ddxd,grasp_data] = grasp_traj(x_in,time)
 %% Description: generates minimum jerk task-space trajectory for interaction task
 %%Outputs: xd,dxd,ddxd = desired trajectory variables;
 %          grasp = flag acknowledgin contact with object;
