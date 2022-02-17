@@ -8,8 +8,6 @@ clc;
 addpath /home/geriatronics/github/panda_dynamic_control/functions
 addpath /home/geriatronics/github/panda_dynamic_control/Vrep_utils
 
-% addpath /home/rachele/github/panda_dynamic_control/functions
-% addpath /home/rachele/github/panda_dynamic_control/Vrep_utils
 
 disp('Loading parameters..')
 
