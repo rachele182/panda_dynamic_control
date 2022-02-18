@@ -2,7 +2,7 @@
 
 %des trajectory
 % [xd,dxd,ddxd] = gen_traj(x_in,time);
-[xd,dxd,ddxd,int_data] = int_traj(x_in,time); 
+[xd,dxd,ddxd] = int_traj(x_in,time); 
 
 
 fi_data = zeros(size(time,2),1);
@@ -112,4 +112,7 @@ ylabel('z [m]')
 legend('des','comp')
 
 
-
+figure;
+plot(time, pos_d(:,4) - pos_r(:,4), 'Linewidth',2, 'Color', '[0.9290, 0.6940, 0.1250]')
+xlabel('time [s]')
+ylabel('displacement [m]')

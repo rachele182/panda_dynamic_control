@@ -41,8 +41,8 @@ dx_in = zeros(8,1);
 I = eye(6); 
 Md1 = 1.5*I;  %desired mass matrix
 Kd1 = 300*I;  %desired stiffness matrix 
-Bd1 = 4*sqrt(4*Kd1*Md1);  %desired damping matrix
-
+% Bd1 = 4*sqrt(4*Kd1*Md1);  %desired damping matrix
+Bd1 = sqrt(4*Kd1*Md1);
 
 %utils
 z_table = 0.35; % m
